@@ -1,7 +1,7 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
     <id>com.github.wangtk311.plugintest</id>
-    <name>plugin-test</name>
+    <name>AutoVersion-Mini</name>
     <vendor>wang and wu</vendor>
 
     <depends>com.intellij.modules.platform</depends>
