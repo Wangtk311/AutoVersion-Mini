@@ -16,18 +16,18 @@ import javax.swing.JButton
 class MyToolWindowFactory : ToolWindowFactory {
 
     init {
-        thisLogger().warn("Don't forget to remove all non-needed sample code files with their corresponding registration entries in `plugin.xml`.")
+        thisLogger().info("Don't forget to remove all non-needed sample code files with their corresponding registration entries in `plugin.xml`.")
     }
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val myToolWindow = MyToolWindow(toolWindow)
+        val myToolWindow = AutoVersionMini(toolWindow)
         val content = ContentFactory.getInstance().createContent(myToolWindow.getContent(), null, false)
         toolWindow.contentManager.addContent(content)
     }
 
     override fun shouldBeAvailable(project: Project) = true
 
-    class MyToolWindow(toolWindow: ToolWindow) {
+    class AutoVersionMini (toolWindow: ToolWindow) {
 
         private val service = toolWindow.project.service<MyProjectService>()
 

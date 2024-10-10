@@ -2,14 +2,14 @@
 <idea-plugin>
     <id>com.github.wangtk311.plugintest</id>
     <name>plugin-test</name>
-    <vendor>wangtk311</vendor>
+    <vendor>wang and wu</vendor>
 
     <depends>com.intellij.modules.platform</depends>
 
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.wangtk311.plugintest.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
+        <toolWindow factoryClass="com.github.wangtk311.plugintest.toolWindow.MyToolWindowFactory" id="AutoVersion Mini" icon="/META-INF/icon.svg"/>
     </extensions>
 
     <applicationListeners>
