@@ -1,4 +1,6 @@
-# plugin-test
+# AutoVersion Mini
+
+JavaEE 课程项目： IntelliJ IDEA 实用版本控制插件开发
 
 ![Build](https://github.com/Wangtk311/plugin-test/workflows/Build/badge.svg)
 [![Version](https://img.shields.io/jetbrains/plugin/v/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)
