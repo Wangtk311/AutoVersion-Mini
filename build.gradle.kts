@@ -11,6 +11,13 @@ plugins {
     alias(libs.plugins.kover) // Gradle Kover Plugin
 }
 
+sourceSets {
+    main {
+        java.srcDirs("src/main/kotlin")
+    }
+}
+
+
 group = providers.gradleProperty("pluginGroup").get()
 version = providers.gradleProperty("pluginVersion").get()
 
@@ -53,7 +60,7 @@ dependencies {
 // Configure IntelliJ Platform Gradle Plugin - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-extension.html
 intellijPlatform {
     pluginConfiguration {
-        version = providers.gradleProperty("pluginVersion")
+        version = "2021.2"  // IntelliJ IDEA 2021.2 版本
 
         // Extract the <!-- Plugin description --> section from README.md and provide for the plugin's manifest
         description = providers.fileContents(layout.projectDirectory.file("README.md")).asText.map {

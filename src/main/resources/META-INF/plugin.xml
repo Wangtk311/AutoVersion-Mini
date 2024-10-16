@@ -1,18 +1,17 @@
-<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
-    <id>com.github.wangtk311.plugintest</id>
-    <name>AutoVersion-Mini</name>
-    <vendor>wang and wu</vendor>
+    <id>com.example.versioningplugin</id>
+    <name>AutoVersion Mini</name>
+    <vendor email="your.email@example.com" url="http://example.com">Your Name</vendor>
 
-    <depends>com.intellij.modules.platform</depends>
+    <!-- 注册 projectComponent -->
+    <project-components>
+        <component>
+            <implementation-class>com.github.wangtk311.plugintest.MyProjectComponent</implementation-class>
+        </component>
+    </project-components>
 
-    <resource-bundle>messages.MyBundle</resource-bundle>
-
+    <!-- 注册 ToolWindow -->
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.wangtk311.plugintest.toolWindow.MyToolWindowFactory" id="AutoVersion Mini" icon="/META-INF/icon.svg"/>
+        <toolWindow id="AutoVersion Mini" factoryClass="com.github.wangtk311.plugintest.toolWindow.VersionToolWindowFactory" anchor="left"/>
     </extensions>
-
-    <applicationListeners>
-        <listener class="com.github.wangtk311.plugintest.listeners.MyApplicationActivationListener" topic="com.intellij.openapi.application.ApplicationActivationListener"/>
-    </applicationListeners>
 </idea-plugin>
