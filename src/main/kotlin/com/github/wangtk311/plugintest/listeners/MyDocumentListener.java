@@ -1,6 +1,6 @@
 package com.github.wangtk311.plugintest.listeners;
 
-import com.github.wangtk311.plugintest.VersionStorage;
+import com.github.wangtk311.plugintest.services.VersionStorage;
 import com.github.wangtk311.plugintest.toolWindow.VersionToolWindowFactory;
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.event.DocumentListener;

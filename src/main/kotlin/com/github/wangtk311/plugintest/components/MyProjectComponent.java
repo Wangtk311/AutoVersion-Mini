@@ -1,4 +1,4 @@
-package com.github.wangtk311.plugintest;
+package com.github.wangtk311.plugintest.components;
 
 import com.github.wangtk311.plugintest.listeners.MyDocumentListener;
 import com.intellij.openapi.components.ProjectComponent;

@@ -1,4 +1,4 @@
-package com.github.wangtk311.plugintest;
+package com.github.wangtk311.plugintest.services;
 
 import java.util.ArrayList;
 import java.util.HashMap;
