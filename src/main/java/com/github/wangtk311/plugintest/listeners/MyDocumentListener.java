@@ -23,11 +23,21 @@ public class MyDocumentListener implements DocumentListener {
 
     @Override
     public void documentChanged(DocumentEvent event) {
-        // 当文档发生变化时，保存整个项目的版本
-        saveProjectVersion();
+        // 检查是否为添加或删除分号
+        String newText = event.getNewFragment().toString();
+        String oldText = event.getOldFragment().toString();
 
-        // 保存版本后，立即刷新 ToolWindow
-        refreshToolWindow();
+        if (isSemicolonChanged(newText, oldText)) {
+            // 只有涉及到分号的修改时，才保存整个项目的版本
+            saveProjectVersion();
+
+            // 保存版本后，立即刷新 ToolWindow
+            refreshToolWindow();
+        }
+    }
+
+    private boolean isSemicolonChanged(String newText, String oldText) {
+        return (newText.contains(";") && !oldText.contains(";")) || (!newText.contains(";") && oldText.contains(";"));
     }
 
     private void saveProjectVersion() {

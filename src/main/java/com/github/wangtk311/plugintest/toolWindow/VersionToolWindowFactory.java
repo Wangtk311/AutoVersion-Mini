@@ -17,7 +17,7 @@ import java.util.Map;
 public class VersionToolWindowFactory implements ToolWindowFactory {
     private JPanel historyWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow){
         JPanel panel = new JPanel();
-        JLabel label = new JLabel("已记录的项目历史版本\n", SwingConstants.CENTER);
+        JLabel label = new JLabel("已记录的项目历史版本\n\n", SwingConstants.CENTER);
 
         // 获取所有历史版本
         List<Map<String, String>> projectVersions = VersionStorage.getProjectVersions();
@@ -65,7 +65,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         for (Map.Entry<String, String> entry : versionContents.entrySet()) {
             textArea.append("----------------------------------------------\n");
             textArea.append("文件: " + entry.getKey() + "\n");
-            textArea.append("内容:\n\n==文件开始==\n" + entry.getValue() + "\n==文件结束==\n\n");
+            textArea.append("内容:\n\n===文件开始===\n" + entry.getValue() + "\n===文件结束===\n\n");
         }
 
         // 添加“返回”按钮
