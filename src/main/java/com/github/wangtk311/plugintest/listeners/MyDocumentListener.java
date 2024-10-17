@@ -12,6 +12,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -25,7 +26,7 @@ public class MyDocumentListener implements DocumentListener {
     }
 
     @Override
-    public void documentChanged(DocumentEvent event) {
+    public void documentChanged(@NotNull DocumentEvent event) {
         // 检查是否为添加或删除分号
         String newText = event.getNewFragment().toString();
         String oldText = event.getOldFragment().toString();
@@ -39,7 +40,7 @@ public class MyDocumentListener implements DocumentListener {
         }
     }
 
-    private boolean isSemicolonChanged(String newText, String oldText) {
+    private boolean isSemicolonChanged(@NotNull String newText, String oldText) {
         return (newText.contains(";") && !oldText.contains(";")) || (!newText.contains(";") && oldText.contains(";"));
     }
 
@@ -57,19 +58,7 @@ public class MyDocumentListener implements DocumentListener {
             String currentContent = document.getText();
 
             // 处理文件的新增、删除或修改
-            FileChange.ChangeType changeType;
-
-            // 检查文件是否已经存在
-            if (!lastFileContentMap.containsKey(filePath)) {
-                // 如果文件之前不存在，则标记为新增文件
-                changeType = FileChange.ChangeType.ADD;
-            } else if (currentContent.isEmpty()) {
-                // 如果文件内容为空，且之前存在内容，标记为删除文件
-                changeType = FileChange.ChangeType.DELETE;
-            } else {
-                // 否则标记为修改文件
-                changeType = FileChange.ChangeType.MODIFY;
-            }
+            FileChange.ChangeType changeType = FileChange.ChangeType.MODIFY;
 
             // 保存文件变化（包括新增、删除、修改）
             FileChange fileChange = new FileChange(filePath, currentContent, changeType);

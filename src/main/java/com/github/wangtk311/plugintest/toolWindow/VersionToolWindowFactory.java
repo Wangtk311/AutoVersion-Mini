@@ -12,6 +12,12 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -19,7 +25,8 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
 
     private JPanel historyWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
         JPanel panel = new JPanel();
-        JLabel label = new JLabel("已记录的项目历史版本\n\n", SwingConstants.CENTER);
+        JLabel label = new JLabel("AutoVersion Mini 已记录的版本\n\n", SwingConstants.CENTER);
+        JLabel label2 = new JLabel("·", SwingConstants.CENTER);
 
         // 获取所有历史版本
         List<Map<String, FileChange>> projectVersions = VersionStorage.getProjectVersions();
@@ -27,7 +34,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         // 创建UI列表以显示所有版本
         DefaultListModel<String> listModel = new DefaultListModel<>();
         for (int i = 0; i < projectVersions.size(); i++) {
-            listModel.addElement("【 Version " + (i + 1) + " 】版本, 共保存了 " + projectVersions.get(i).size() + " 个文件的修改");
+            listModel.addElement("【 Version " + (i + 1) + " 】版本 - 共保存 " + projectVersions.get(i).size() + " 个文件变动");
         }
 
         JList<String> versionList = new JBList<>(listModel);
@@ -41,9 +48,64 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
             }
         });
 
+        JButton backButton = new JButton("✖ 抹除所有历史版本");
+        backButton.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(panel, "确定要抹除历史版本吗?\n这将保存当前项目状态作为第一个版本。\n该操作不可逆!", "双重确认", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                // 清空autoversion.record.bin文件(写入空列表)
+                VersionStorage.clearVersions();
+
+                // 创建新的 fileChanges map 来保存当前项目状态
+                Map<String, FileChange> fileChanges = new HashMap<>();
+                Path projectRoot = Paths.get(project.getBasePath());
+
+                // 使用 Files.walk 递归遍历项目目录及其子目录中的所有文件
+                try {
+                    Files.walk(projectRoot).forEach(path -> {
+                        File file = path.toFile();
+                        if (file.isFile() && !file.getName().equals("autoversion.record.bin")) {
+                            try {
+                                String filePath = file.getCanonicalPath(); // 获取文件的绝对路径
+                                // 将文件的路径和 FileChange 实例放入 map, 保存文件内容
+                                String fileContent = new String(Files.readAllBytes(path)); // 读取文件内容
+                                fileChanges.put(filePath, new FileChange(filePath, fileContent, FileChange.ChangeType.ADD));
+                            } catch (IOException e2) {
+                                e2.printStackTrace();
+                            }
+                        }
+                    });
+                } catch (IOException e3) {
+                    throw new RuntimeException(e3);
+                }
+
+                // 保存新的版本
+                VersionStorage.saveVersion(fileChanges);
+
+                // 将版本数据写入磁盘
+                VersionStorage.saveVersionsToDisk();
+
+                // 显示成功信息
+                JOptionPane.showMessageDialog(panel, "已抹除所有历史版本!", "抹除成功", JOptionPane.CLOSED_OPTION);
+
+                // 清空当前面板内容并重新加载历史版本列表
+                panel.removeAll(); // 清空面板
+                panel.add(historyWindowContent(project, toolWindow)); // 显示历史版本列表
+
+                // 重新绘制面板
+                panel.revalidate(); // 通知 Swing 重新布局
+                panel.repaint(); // 重新绘制面板
+            }
+        });
+
+
+        JPanel labelPanel = new JPanel();
+        labelPanel.setLayout(new GridLayout(2, 1));
+        labelPanel.add(label);
+        labelPanel.add(label2);
         panel.setLayout(new BorderLayout());
-        panel.add(label, BorderLayout.NORTH);
+        panel.add(labelPanel, BorderLayout.NORTH);
         panel.add(new JScrollPane(versionList), BorderLayout.CENTER);
+        panel.add(backButton, BorderLayout.SOUTH);
 
         return panel;
     }
@@ -84,7 +146,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         // 添加“恢复版本”按钮
         JButton restoreButton = new JButton("↑ 回滚到此版本");
         restoreButton.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(panel, "确定要回滚到 Version " + (versionIndex + 1) + " 版本吗?", "双重确认", JOptionPane.YES_NO_OPTION);
+            int confirm = JOptionPane.showConfirmDialog(panel, "确定要回滚到 Version " + (versionIndex + 1) + " 版本吗?\n这将丢弃当前的工作!", "双重确认", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 int selectedVersion = versionIndex;
                 Map<String, FileChange> versionFiles = VersionStorage.getVersion(selectedVersion);
@@ -93,21 +155,15 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                     FileChange fileChange = entry.getValue();
                     String filePath = fileChange.getFilePath();
                     switch (fileChange.getChangeType()) {
-                        case ADD:
-                            // 如果文件是新增的，在回滚时删除
+                        case DELETE:
                             VersionStorage.deleteFile(filePath);
                             break;
-                        case DELETE:
-                            // 如果文件是删除的，在回滚时重新创建并写入内容
-                            VersionStorage.restoreFileToDirectory(filePath, fileChange.getFileContent());
-                            break;
-                        case MODIFY:
-                            // 如果文件是修改的，在回滚时恢复内容
+                        case ADD, MODIFY:
                             VersionStorage.restoreFileToDirectory(filePath, fileChange.getFileContent());
                             break;
                     }
                 }
-                JOptionPane.showConfirmDialog(panel, "已回滚到 Version " + (selectedVersion + 1) + " 版本!", "回滚成功", JOptionPane.CLOSED_OPTION);
+                JOptionPane.showMessageDialog(panel, "已回滚到 Version " + (selectedVersion + 1) + " 版本!", "回滚成功", JOptionPane.CLOSED_OPTION);
             }
         });
 

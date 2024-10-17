@@ -1,8 +1,14 @@
 package com.github.wangtk311.plugintest.services;
 
-public class FileChange {
+import java.io.Serial;
+import java.io.Serializable;
+
+public class FileChange implements Serializable {  // 实现 Serializable 接口
+    @Serial
+    private static final long serialVersionUID = 1L;
+
     public enum ChangeType {
-        INIT, ADD, DELETE, MODIFY
+        ADD, DELETE, MODIFY
     }
 
     private String filePath;

@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.example.versioningplugin</id>
     <name>AutoVersion Mini</name>
-    <vendor email="your.email@example.com" url="http://example.com">Your Name</vendor>
+    <vendor>Wu Chen and Wang Tiankuo</vendor>
 
     <!-- 注册 projectComponent -->
     <project-components>

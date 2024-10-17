@@ -1,18 +1,19 @@
 package com.github.wangtk311.plugintest.services;
 
+import com.intellij.openapi.project.Project;
+import org.jetbrains.annotations.NotNull;
+
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 
 public class VersionStorage {
-
-    public static final String VERSION_STORAGE_FILE = "autoversion.record.bin";  // 文件名，保存版本数据
+    public static String VERSION_STORAGE_FILE = "autoversion.record.bin";  // 文件名，保存版本数据
     private static List<Map<String, FileChange>> projectVersions = new ArrayList<>();
 
     // 初始化时从磁盘加载版本历史
     static {
-        saveVersionsToDisk();
         loadVersionsFromDisk();
     }
 
@@ -53,7 +54,7 @@ public class VersionStorage {
     }
 
     // 保存所有版本到磁盘
-    private static void saveVersionsToDisk() {
+    public static void saveVersionsToDisk() {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(VERSION_STORAGE_FILE))) {
             oos.writeObject(projectVersions);
         } catch (IOException e) {
@@ -71,5 +72,10 @@ public class VersionStorage {
                 e.printStackTrace();
             }
         }
+    }
+
+    public static void clearVersions() {
+        projectVersions.clear();
+        saveVersionsToDisk();
     }
 }
