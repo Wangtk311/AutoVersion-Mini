@@ -6,12 +6,12 @@
     <!-- 注册 projectComponent -->
     <project-components>
         <component>
-            <implementation-class>com.github.wangtk311.plugintest.MyProjectComponent</implementation-class>
+            <implementation-class>com.github.wangtk311.plugintest.components.MyProjectComponent</implementation-class>
         </component>
     </project-components>
 
     <!-- 注册 ToolWindow -->
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="AutoVersion Mini" factoryClass="com.github.wangtk311.plugintest.toolWindow.VersionToolWindowFactory" anchor="left"/>
+        <toolWindow id="AutoVersion Mini" factoryClass="com.github.wangtk311.plugintest.toolWindow.VersionToolWindowFactory" anchor="left" icon="AllIcons.Actions.ProfileCPU"/>
     </extensions>
 </idea-plugin>
