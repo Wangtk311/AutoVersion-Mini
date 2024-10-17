@@ -38,6 +38,10 @@ public class VersionStorage {
         try {
             Path path = Paths.get(filePath);
             Files.createDirectories(path.getParent()); // 如果目录不存在，先创建
+            // 如果文件也不存在，则需要先创建文件
+            if (!Files.exists(path)) {
+                Files.createFile(path);
+            }
             Files.write(path, fileContent.getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
             e.printStackTrace();

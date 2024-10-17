@@ -1,6 +1,7 @@
 package com.github.wangtk311.plugintest.components;
 
 import com.github.wangtk311.plugintest.listeners.MyDocumentListener;
+import com.github.wangtk311.plugintest.listeners.FileSystemListener; // 引入新添加的监听器
 import com.github.wangtk311.plugintest.services.FileChange;
 import com.github.wangtk311.plugintest.services.VersionStorage;
 import com.intellij.openapi.components.ProjectComponent;
@@ -20,6 +21,7 @@ import java.util.Map;
 
 public class MyProjectComponent implements ProjectComponent {
     private final Project project;
+    private FileSystemListener fileSystemListener; // 新增文件系统监听器
 
     public MyProjectComponent(Project project) {
         this.project = project;
@@ -27,25 +29,25 @@ public class MyProjectComponent implements ProjectComponent {
 
     @Override
     public void projectOpened() {
-        // 检查是否有版本历史文件，如果有则加载
         VersionStorage.VERSION_STORAGE_FILE = project.getBasePath() + "/autoversion.record.bin";
         System.out.println("AutoVersion History file: " + VersionStorage.VERSION_STORAGE_FILE);
         File versionFile = new File(VersionStorage.VERSION_STORAGE_FILE);
+
+        // 加载历史版本
         if (versionFile.exists()) {
-            VersionStorage.loadVersionsFromDisk();  // 加载之前保存的版本
-        }
-        else { // 没有历史文件，说明是第一次打开项目，保存当前项目中的所有文件作为第一版，除了autoversion.record.bin记录文件
+            VersionStorage.loadVersionsFromDisk();
+        } else {
+            // 初始化保存当前项目状态为第一版
             Map<String, FileChange> fileChanges = new HashMap<>();
             Path projectRoot = Paths.get(project.getBasePath());
 
-            // 使用 Files.walk 递归遍历项目目录及其子目录中的所有文件
+            // 递归遍历项目目录中的文件
             try {
                 Files.walk(projectRoot).forEach(path -> {
                     File file = path.toFile();
                     if (file.isFile() && !file.getName().equals("autoversion.record.bin")) {
                         try {
-                            String filePath = file.getCanonicalPath(); // 获取文件的绝对路径
-                            // 将文件的路径和 FileChange 实例放入 map
+                            String filePath = file.getCanonicalPath();
                             fileChanges.put(filePath, new FileChange(filePath, new String(Files.readAllBytes(path)), FileChange.ChangeType.ADD));
                         } catch (IOException e) {
                             e.printStackTrace();
@@ -58,6 +60,10 @@ public class MyProjectComponent implements ProjectComponent {
             VersionStorage.saveVersion(fileChanges);
             VersionStorage.saveVersionsToDisk();
         }
+
+        // 初始化文件系统监听器
+        fileSystemListener = new FileSystemListener(Paths.get(project.getBasePath()));
+
 
         // 为每个打开的编辑器添加监听器
         EditorFactory.getInstance().addEditorFactoryListener(new EditorFactoryListener() {

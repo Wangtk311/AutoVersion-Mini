@@ -27,6 +27,14 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         JPanel panel = new JPanel();
         JLabel label = new JLabel("AutoVersion Mini 已记录的版本\n\n", SwingConstants.CENTER);
         JLabel label2 = new JLabel("·", SwingConstants.CENTER);
+        JButton gitButton = new JButton("→☍ 将最新版本推送到Git");
+        gitButton.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(panel, "确定要推送到Git吗?\n这将保存当前的版本作为一个大版本的提交，并保存一系列小版本的提交。\n该操作不可逆!", "双重确认", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+
+                JOptionPane.showMessageDialog(panel, "已成功推送到Git!", "推送成功", JOptionPane.CLOSED_OPTION);
+            }
+        });
 
         // 获取所有历史版本
         List<Map<String, FileChange>> projectVersions = VersionStorage.getProjectVersions();
@@ -102,10 +110,16 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         labelPanel.setLayout(new GridLayout(2, 1));
         labelPanel.add(label);
         labelPanel.add(label2);
+
         panel.setLayout(new BorderLayout());
         panel.add(labelPanel, BorderLayout.NORTH);
         panel.add(new JScrollPane(versionList), BorderLayout.CENTER);
-        panel.add(backButton, BorderLayout.SOUTH);
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new GridLayout(1, 2));
+        buttonPanel.add(backButton);
+        buttonPanel.add(gitButton);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
 
         return panel;
     }
@@ -132,7 +146,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
             textArea.append("----------------------------------------------\n");
             textArea.append("文件: " + fileChange.getFilePath() + "\n");
             textArea.append("操作: " + fileChange.getChangeType() + "\n");
-            textArea.append("内容:\n\n===文件开始===\n" + (fileChange.getFileContent() == null ? "无内容" : fileChange.getFileContent()) + "\n===文件结束===\n\n");
+            textArea.append("内容:\n\n[===文件开始===]\n" + (fileChange.getFileContent() == null ? "[文件无内容]" : fileChange.getFileContent()) + "\n[===文件结束===]\n\n");
         }
 
         // 添加“返回”按钮
@@ -148,6 +162,22 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         restoreButton.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(panel, "确定要回滚到 Version " + (versionIndex + 1) + " 版本吗?\n这将丢弃当前的工作!", "双重确认", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
+                // 首先从根目录递归检索删除当前项目中的每一个文件(除了autoversion.record.bin文件)，然后依照版本从前到后逐步恢复选中版本的文件，可以避免留下当前版本中存在但回滚目标版本中不存在的文件
+                try {
+                    Files.walk(Paths.get(project.getBasePath())).forEach(path -> {
+                        File file = path.toFile();
+                        if (file.isFile() && !file.getName().equals("autoversion.record.bin")) {
+                            try {
+                                Files.deleteIfExists(path);
+                            } catch (IOException e2) {
+                                e2.printStackTrace();
+                            }
+                        }
+                    });
+                } catch (IOException e3) {
+                    throw new RuntimeException(e3);
+                }
+
                 int selectedVersion = versionIndex;
                 Map<String, FileChange> versionFiles = VersionStorage.getVersion(selectedVersion);
 

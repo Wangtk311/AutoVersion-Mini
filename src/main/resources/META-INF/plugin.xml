@@ -12,6 +12,6 @@
 
     <!-- 注册 ToolWindow -->
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="AutoVersion Mini" factoryClass="com.github.wangtk311.plugintest.toolWindow.VersionToolWindowFactory" anchor="left" icon="AllIcons.Actions.ProfileCPU"/>
+        <toolWindow id="AutoVersion Mini" factoryClass="com.github.wangtk311.plugintest.toolWindow.VersionToolWindowFactory" anchor="left" icon="AllIcons.Actions.SwapPanels"/>
     </extensions>
 </idea-plugin>
