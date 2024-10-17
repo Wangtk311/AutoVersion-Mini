@@ -56,9 +56,9 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
             }
         });
 
-        JButton backButton = new JButton("✖ 抹除所有历史版本");
+        JButton backButton = new JButton("✖ 抹掉所有历史版本");
         backButton.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(panel, "确定要抹除历史版本吗?\n这将保存当前项目状态作为第一个版本。\n该操作不可逆!", "双重确认", JOptionPane.YES_NO_OPTION);
+            int confirm = JOptionPane.showConfirmDialog(panel, "确定要抹掉所有历史版本吗?\n这将同步保存当前状态作为一个历史版本。\n该操作不可逆!", "双重确认", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 // 清空autoversion.record.bin文件(写入空列表)
                 VersionStorage.clearVersions();
