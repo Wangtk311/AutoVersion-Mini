@@ -51,6 +51,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 int selectedIndex = versionList.getSelectedIndex();
                 if (selectedIndex >= 0) {
                     // 显示选中的版本的详细内容
+                    System.out.println("Selected version: " + selectedIndex + 1);
                     showVersionDetails(panel, selectedIndex, project, toolWindow);
                 }
             }
@@ -162,6 +163,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         restoreButton.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(panel, "确定要回滚到 Version " + (versionIndex + 1) + " 版本吗?\n这将丢弃当前的工作!", "双重确认", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
+                System.out.println("回滚到 Version " + (versionIndex + 1) + " 版本");
                 // 首先从根目录递归检索删除当前项目中的每一个文件(除了autoversion.record.bin文件)，然后依照版本从前到后逐步恢复选中版本的文件，可以避免留下当前版本中存在但回滚目标版本中不存在的文件
                 try {
                     Files.walk(Paths.get(project.getBasePath())).forEach(path -> {
@@ -179,18 +181,21 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 }
 
                 int selectedVersion = versionIndex;
-                Map<String, FileChange> versionFiles = VersionStorage.getVersion(selectedVersion);
+                Map<String, FileChange> versionFiles;
 
-                for (Map.Entry<String, FileChange> entry : versionFiles.entrySet()) {
-                    FileChange fileChange = entry.getValue();
-                    String filePath = fileChange.getFilePath();
-                    switch (fileChange.getChangeType()) {
-                        case DELETE:
-                            VersionStorage.deleteFile(filePath);
-                            break;
-                        case ADD, MODIFY:
-                            VersionStorage.restoreFileToDirectory(filePath, fileChange.getFileContent());
-                            break;
+                for (int i = 0; i <= versionIndex; i++){
+                    versionFiles = VersionStorage.getVersion(i);
+                    for (Map.Entry<String, FileChange> entry : versionFiles.entrySet()) {
+                        FileChange fileChange = entry.getValue();
+                        String filePath = fileChange.getFilePath();
+                        switch (fileChange.getChangeType()) {
+                            case DELETE:
+                                VersionStorage.deleteFile(filePath);
+                                break;
+                            case ADD, MODIFY:
+                                VersionStorage.restoreFileToDirectory(filePath, fileChange.getFileContent());
+                                break;
+                        }
                     }
                 }
                 JOptionPane.showMessageDialog(panel, "已回滚到 Version " + (selectedVersion + 1) + " 版本!\n请在项目目录中选择从磁盘重新加载。", "回滚成功", JOptionPane.CLOSED_OPTION);
