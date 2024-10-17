@@ -24,6 +24,8 @@ public class MyDocumentListener implements DocumentListener {
     @Override
     public void documentChanged(DocumentEvent event) {
         // 当文档发生变化时，保存整个项目的版本
+
+
         saveProjectVersion();
 
         // 保存版本后，立即刷新 ToolWindow
