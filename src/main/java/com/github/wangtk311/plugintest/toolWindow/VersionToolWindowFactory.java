@@ -29,7 +29,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         JLabel label2 = new JLabel("·", SwingConstants.CENTER);
         JButton gitButton = new JButton("→☍ 将最新版本推送到Git");
         gitButton.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(panel, "确定要推送到Git吗?\n这将保存当前的版本作为一个大版本的提交，并保存一系列小版本的提交。\n该操作不可逆!", "双重确认", JOptionPane.YES_NO_OPTION);
+            int confirm = JOptionPane.showConfirmDialog(panel, "确定要推送到Git吗?\n这将保存当前的版本作为一个大版本的提交，\n并保存一系列小版本的提交。\n该操作不可逆!", "双重确认", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
 
                 JOptionPane.showMessageDialog(panel, "已成功推送到Git!", "推送成功", JOptionPane.CLOSED_OPTION);
@@ -193,7 +193,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                             break;
                     }
                 }
-                JOptionPane.showMessageDialog(panel, "已回滚到 Version " + (selectedVersion + 1) + " 版本!", "回滚成功", JOptionPane.CLOSED_OPTION);
+                JOptionPane.showMessageDialog(panel, "已回滚到 Version " + (selectedVersion + 1) + " 版本!\n请在项目目录中选择从磁盘重新加载。", "回滚成功", JOptionPane.CLOSED_OPTION);
             }
         });
 
