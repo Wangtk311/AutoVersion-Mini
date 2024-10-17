@@ -1,5 +1,6 @@
 package com.github.wangtk311.plugintest.toolWindow;
 
+import com.github.wangtk311.plugintest.services.FileChange;
 import com.github.wangtk311.plugintest.services.VersionStorage;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.ToolWindow;
@@ -15,12 +16,13 @@ import java.util.List;
 import java.util.Map;
 
 public class VersionToolWindowFactory implements ToolWindowFactory {
-    private JPanel historyWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow){
+
+    private JPanel historyWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
         JPanel panel = new JPanel();
         JLabel label = new JLabel("已记录的项目历史版本\n\n", SwingConstants.CENTER);
 
         // 获取所有历史版本
-        List<Map<String, String>> projectVersions = VersionStorage.getProjectVersions();
+        List<Map<String, FileChange>> projectVersions = VersionStorage.getProjectVersions();
 
         // 创建UI列表以显示所有版本
         DefaultListModel<String> listModel = new DefaultListModel<>();
@@ -45,6 +47,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
 
         return panel;
     }
+
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
         JPanel panel = historyWindowContent(project, toolWindow);
@@ -56,29 +59,64 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
 
     // 显示选中的版本的文件及其内容
     private void showVersionDetails(JPanel panel, int versionIndex, Project project, ToolWindow toolWindow) {
-        Map<String, String> versionContents = VersionStorage.getVersion(versionIndex);
+        Map<String, FileChange> versionContents = VersionStorage.getVersion(versionIndex);
 
         panel.removeAll(); // 清除旧内容
 
         JTextArea textArea = new JTextArea(20, 50);
         textArea.append("历史版本: Version " + (versionIndex + 1) + " 的内容是:\n\n");
-        for (Map.Entry<String, String> entry : versionContents.entrySet()) {
+        for (Map.Entry<String, FileChange> entry : versionContents.entrySet()) {
+            FileChange fileChange = entry.getValue();
             textArea.append("----------------------------------------------\n");
-            textArea.append("文件: " + entry.getKey() + "\n");
-            textArea.append("内容:\n\n===文件开始===\n" + entry.getValue() + "\n===文件结束===\n\n");
+            textArea.append("文件: " + fileChange.getFilePath() + "\n");
+            textArea.append("操作: " + fileChange.getChangeType() + "\n");
+            textArea.append("内容:\n\n===文件开始===\n" + (fileChange.getFileContent() == null ? "无内容" : fileChange.getFileContent()) + "\n===文件结束===\n\n");
         }
 
         // 添加“返回”按钮
-        JButton backButton = new JButton("<< 返回版本历史列表");
+        JButton backButton = new JButton("◀ 返回版本历史列表");
         backButton.addActionListener(e -> {
             // 点击按钮后返回历史版本列表
             panel.removeAll(); // 清空当前内容
             panel.add(historyWindowContent(project, toolWindow)); // 显示历史版本列表
         });
 
-        // 布局设置
+        // 添加“恢复版本”按钮
+        JButton restoreButton = new JButton("↑ 回滚到此版本");
+        restoreButton.addActionListener(e -> {
+            int selectedVersion = versionIndex;
+            Map<String, FileChange> versionFiles = VersionStorage.getVersion(selectedVersion);
+
+            for (Map.Entry<String, FileChange> entry : versionFiles.entrySet()) {
+                FileChange fileChange = entry.getValue();
+                String filePath = fileChange.getFilePath();
+                switch (fileChange.getChangeType()) {
+                    case ADD:
+                        // 如果文件是新增的，在回滚时删除
+                        VersionStorage.deleteFile(filePath);
+                        break;
+                    case DELETE:
+                        // 如果文件是删除的，在回滚时重新创建并写入内容
+                        VersionStorage.restoreFileToDirectory(filePath, fileChange.getFileContent());
+                        break;
+                    case MODIFY:
+                        // 如果文件是修改的，在回滚时恢复内容
+                        VersionStorage.restoreFileToDirectory(filePath, fileChange.getFileContent());
+                        break;
+                }
+            }
+
+            JOptionPane.showMessageDialog(panel, "已回滚到 Version " + (selectedVersion + 1) + " 版本!");
+        });
+
+        // 添加恢复和返回按钮到界面
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new GridLayout(1, 2));
+        buttonPanel.add(backButton);
+        buttonPanel.add(restoreButton);
+
         panel.setLayout(new BorderLayout());
-        panel.add(backButton, BorderLayout.BEFORE_FIRST_LINE);
+        panel.add(buttonPanel, BorderLayout.BEFORE_FIRST_LINE);
         panel.add(new JScrollPane(textArea), BorderLayout.CENTER);
 
         panel.revalidate(); // 刷新UI

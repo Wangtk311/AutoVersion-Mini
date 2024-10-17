@@ -1,30 +1,47 @@
 package com.github.wangtk311.plugintest.services;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.util.*;
 
 public class VersionStorage {
-    // 存储项目的历史版本
-    private static final List<Map<String, String>> projectVersions = new ArrayList<>();
 
-    // 保存当前项目状态作为一个版本
-    public static void saveProjectVersion(Map<String, String> fileContents) {
-        projectVersions.add(new HashMap<>(fileContents));
-        System.out.println("保存了一个新版本，总版本数：" + projectVersions.size());  // 添加日志确认保存
-    }
+    // 保存所有版本记录
+    private static List<Map<String, FileChange>> projectVersions = new ArrayList<>();
 
-    // 获取所有项目的历史版本
-    public static List<Map<String, String>> getProjectVersions() {
+    // 获取项目的所有历史版本
+    public static List<Map<String, FileChange>> getProjectVersions() {
         return projectVersions;
     }
 
-    // 获取指定版本的内容
-    public static Map<String, String> getVersion(int versionIndex) {
-        if (versionIndex >= 0 && versionIndex < projectVersions.size()) {
-            return projectVersions.get(versionIndex);
+    // 获取某个版本的内容
+    public static Map<String, FileChange> getVersion(int versionIndex) {
+        return projectVersions.get(versionIndex);
+    }
+
+    // 保存当前项目的文件变化
+    public static void saveVersion(Map<String, FileChange> fileChanges) {
+        projectVersions.add(new HashMap<>(fileChanges)); // 保存文件变化的副本
+    }
+
+    // 还原文件到目录
+    public static void restoreFileToDirectory(String filePath, String fileContent) {
+        try {
+            Path path = Paths.get(filePath);
+            Files.createDirectories(path.getParent()); // 如果目录不存在，先创建
+            Files.write(path, fileContent.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        return new HashMap<>();
+    }
+
+    // 删除指定路径的文件
+    public static void deleteFile(String filePath) {
+        try {
+            Files.deleteIfExists(Paths.get(filePath));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

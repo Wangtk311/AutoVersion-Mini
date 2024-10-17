@@ -1,7 +1,9 @@
 package com.github.wangtk311.plugintest.listeners;
 
+import com.github.wangtk311.plugintest.services.FileChange;
 import com.github.wangtk311.plugintest.services.VersionStorage;
 import com.github.wangtk311.plugintest.toolWindow.VersionToolWindowFactory;
+import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
@@ -16,6 +18,7 @@ import java.util.Map;
 
 public class MyDocumentListener implements DocumentListener {
     private final Project project;
+    private final Map<String, String> lastFileContentMap = new HashMap<>();
 
     public MyDocumentListener(Project project) {
         this.project = project;
@@ -41,14 +44,43 @@ public class MyDocumentListener implements DocumentListener {
     }
 
     private void saveProjectVersion() {
-        Map<String, String> fileContents = new HashMap<>();
+        Map<String, FileChange> fileChanges = new HashMap<>();
+
         // 使用 FileEditorManager 获取当前项目中所有已打开的文件
         for (VirtualFile file : FileEditorManager.getInstance(project).getOpenFiles()) {
-            String content = FileDocumentManager.getInstance().getDocument(file).getText();
-            fileContents.put(file.getPath(), content);  // 使用文件路径作为key，内容作为value
+            Document document = FileDocumentManager.getInstance().getDocument(file);
+            if (document == null) {
+                continue;
+            }
+
+            String filePath = file.getPath();
+            String currentContent = document.getText();
+
+            // 处理文件的新增、删除或修改
+            FileChange.ChangeType changeType;
+
+            // 检查文件是否已经存在
+            if (!lastFileContentMap.containsKey(filePath)) {
+                // 如果文件之前不存在，则标记为新增文件
+                changeType = FileChange.ChangeType.ADD;
+            } else if (currentContent.isEmpty()) {
+                // 如果文件内容为空，且之前存在内容，标记为删除文件
+                changeType = FileChange.ChangeType.DELETE;
+            } else {
+                // 否则标记为修改文件
+                changeType = FileChange.ChangeType.MODIFY;
+            }
+
+            // 保存文件变化（包括新增、删除、修改）
+            FileChange fileChange = new FileChange(filePath, currentContent, changeType);
+            fileChanges.put(filePath, fileChange);
+
+            // 更新最后一次文件内容的记录
+            lastFileContentMap.put(filePath, currentContent);
         }
-        // 保存项目版本
-        VersionStorage.saveProjectVersion(fileContents);
+
+        // 保存项目的文件变化到版本存储中
+        VersionStorage.saveVersion(fileChanges);
     }
 
     private void refreshToolWindow() {
