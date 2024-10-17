@@ -84,29 +84,31 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         // 添加“恢复版本”按钮
         JButton restoreButton = new JButton("↑ 回滚到此版本");
         restoreButton.addActionListener(e -> {
-            int selectedVersion = versionIndex;
-            Map<String, FileChange> versionFiles = VersionStorage.getVersion(selectedVersion);
+            int confirm = JOptionPane.showConfirmDialog(panel, "确定要回滚到 Version " + (versionIndex + 1) + " 版本吗?", "双重确认", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                int selectedVersion = versionIndex;
+                Map<String, FileChange> versionFiles = VersionStorage.getVersion(selectedVersion);
 
-            for (Map.Entry<String, FileChange> entry : versionFiles.entrySet()) {
-                FileChange fileChange = entry.getValue();
-                String filePath = fileChange.getFilePath();
-                switch (fileChange.getChangeType()) {
-                    case ADD:
-                        // 如果文件是新增的，在回滚时删除
-                        VersionStorage.deleteFile(filePath);
-                        break;
-                    case DELETE:
-                        // 如果文件是删除的，在回滚时重新创建并写入内容
-                        VersionStorage.restoreFileToDirectory(filePath, fileChange.getFileContent());
-                        break;
-                    case MODIFY:
-                        // 如果文件是修改的，在回滚时恢复内容
-                        VersionStorage.restoreFileToDirectory(filePath, fileChange.getFileContent());
-                        break;
+                for (Map.Entry<String, FileChange> entry : versionFiles.entrySet()) {
+                    FileChange fileChange = entry.getValue();
+                    String filePath = fileChange.getFilePath();
+                    switch (fileChange.getChangeType()) {
+                        case ADD:
+                            // 如果文件是新增的，在回滚时删除
+                            VersionStorage.deleteFile(filePath);
+                            break;
+                        case DELETE:
+                            // 如果文件是删除的，在回滚时重新创建并写入内容
+                            VersionStorage.restoreFileToDirectory(filePath, fileChange.getFileContent());
+                            break;
+                        case MODIFY:
+                            // 如果文件是修改的，在回滚时恢复内容
+                            VersionStorage.restoreFileToDirectory(filePath, fileChange.getFileContent());
+                            break;
+                    }
                 }
+                JOptionPane.showConfirmDialog(panel, "已回滚到 Version " + (selectedVersion + 1) + " 版本!", "回滚成功", JOptionPane.CLOSED_OPTION);
             }
-
-            JOptionPane.showMessageDialog(panel, "已回滚到 Version " + (selectedVersion + 1) + " 版本!");
         });
 
         // 添加恢复和返回按钮到界面
