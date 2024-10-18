@@ -5,7 +5,6 @@ import com.github.wangtk311.plugintest.services.VersionStorage;
 import com.github.wangtk311.plugintest.toolWindow.VersionToolWindowFactory;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.event.DocumentEvent;
-import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
@@ -17,11 +16,11 @@ import org.jetbrains.annotations.NotNull;
 import java.util.HashMap;
 import java.util.Map;
 
-public class MyDocumentListener implements DocumentListener {
+public class DocumentListener implements com.intellij.openapi.editor.event.DocumentListener {
     private final Project project;
     private final Map<String, String> lastFileContentMap = new HashMap<>();
 
-    public MyDocumentListener(Project project) {
+    public DocumentListener(Project project) {
         this.project = project;
     }
 
@@ -47,12 +46,9 @@ public class MyDocumentListener implements DocumentListener {
     private void saveProjectVersion() {
         Map<String, FileChange> fileChanges = new HashMap<>();
 
-        // 使用 FileEditorManager 获取当前项目中所有已打开的文件
-        for (VirtualFile file : FileEditorManager.getInstance(project).getOpenFiles()) {
+        // 使用 FileEditorManager 获取当前打开的文件，因为发生粒度变化的文件只可能是当前打开的文件
+        VirtualFile file = FileEditorManager.getInstance(project).getSelectedEditor().getFile();
             Document document = FileDocumentManager.getInstance().getDocument(file);
-            if (document == null) {
-                continue;
-            }
 
             String filePath = file.getPath();
             String currentContent = document.getText();
@@ -66,7 +62,7 @@ public class MyDocumentListener implements DocumentListener {
 
             // 更新最后一次文件内容的记录
             lastFileContentMap.put(filePath, currentContent);
-        }
+
 
         // 保存项目的文件变化到版本存储中
         VersionStorage.saveVersion(fileChanges);

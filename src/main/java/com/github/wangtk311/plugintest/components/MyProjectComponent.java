@@ -1,6 +1,6 @@
 package com.github.wangtk311.plugintest.components;
 
-import com.github.wangtk311.plugintest.listeners.MyDocumentListener;
+import com.github.wangtk311.plugintest.listeners.DocumentListener;
 import com.github.wangtk311.plugintest.listeners.FileSystemListener; // 引入新添加的监听器
 import com.github.wangtk311.plugintest.services.FileChange;
 import com.github.wangtk311.plugintest.services.VersionStorage;
@@ -64,12 +64,11 @@ public class MyProjectComponent implements ProjectComponent {
         // 初始化文件系统监听器
         fileSystemListener = new FileSystemListener(Paths.get(project.getBasePath()));
 
-
         // 为每个打开的编辑器添加监听器
         EditorFactory.getInstance().addEditorFactoryListener(new EditorFactoryListener() {
             @Override
             public void editorCreated(@NotNull EditorFactoryEvent event) {
-                event.getEditor().getDocument().addDocumentListener(new MyDocumentListener(project));
+                event.getEditor().getDocument().addDocumentListener(new DocumentListener(project));
             }
         }, project);
     }
