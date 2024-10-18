@@ -50,8 +50,6 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
             if (!e.getValueIsAdjusting()) {
                 int selectedIndex = versionList.getSelectedIndex();
                 if (selectedIndex >= 0) {
-                    // 显示选中的版本的详细内容
-                    System.out.println("Selected version: " + selectedIndex + 1);
                     showVersionDetails(panel, selectedIndex, project, toolWindow);
                 }
             }
