@@ -19,13 +19,18 @@ import java.util.Map;
 public class DocumentListener implements com.intellij.openapi.editor.event.DocumentListener {
     private final Project project;
     private final Map<String, String> lastFileContentMap = new HashMap<>();
+    private boolean isListening = true;
 
     public DocumentListener(Project project) {
         this.project = project;
+        enableListening();
     }
 
     @Override
     public void documentChanged(@NotNull DocumentEvent event) {
+        if (!isListening) {
+            return;
+        }
         // 检查是否为添加或删除分号
         String newText = event.getNewFragment().toString();
         String oldText = event.getOldFragment().toString();
@@ -44,6 +49,9 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
     }
 
     private void saveProjectVersion() {
+        if (!isListening) {
+            return;
+        }
         Map<String, FileChange> fileChanges = new HashMap<>();
 
         // 使用 FileEditorManager 获取当前打开的文件，因为发生粒度变化的文件只可能是当前打开的文件
@@ -76,4 +84,13 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
             new VersionToolWindowFactory().createToolWindowContent(project, toolWindow);  // 重新加载内容
         }
     }
+
+    public void enableListening() {
+        isListening = true;
+    }
+
+    public void pauseListening() {
+        isListening = false;
+    }
+
 }

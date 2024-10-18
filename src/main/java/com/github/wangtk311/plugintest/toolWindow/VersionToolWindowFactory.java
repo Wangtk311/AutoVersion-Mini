@@ -1,7 +1,9 @@
 package com.github.wangtk311.plugintest.toolWindow;
 
+import com.github.wangtk311.plugintest.components.MyProjectComponent;
 import com.github.wangtk311.plugintest.services.FileChange;
 import com.github.wangtk311.plugintest.services.VersionStorage;
+import com.github.wangtk311.plugintest.listeners.DocumentListener;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
@@ -59,6 +61,9 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         backButton.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(panel, "确定要抹掉所有历史版本吗?\n这将同步保存当前状态作为一个历史版本。\n该操作不可逆!", "双重确认", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
+                // 暂时关闭文件系统监听器和文档监听器
+
+
                 // 清空autoversion.record.bin文件(写入空列表)
                 VersionStorage.clearVersions();
 

@@ -16,15 +16,25 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 public class MyProjectComponent implements ProjectComponent {
     private final Project project;
-    private FileSystemListener fileSystemListener; // 新增文件系统监听器
+    public FileSystemListener fileSystemListener; // 新增文件系统监听器
+    public ArrayList<DocumentListener> documentListeners = new ArrayList<>(); // 新增文档监听器组
+    private static MyProjectComponent myProjectComponent; // 单例
 
-    public MyProjectComponent(Project project) {
+    private MyProjectComponent(Project project) {
         this.project = project;
+    }
+
+    public static MyProjectComponent getInstance(Project project) {
+        if (myProjectComponent == null) {
+            myProjectComponent = new MyProjectComponent(project);
+        }
+        return myProjectComponent;
     }
 
     @Override
@@ -64,11 +74,13 @@ public class MyProjectComponent implements ProjectComponent {
         // 初始化文件系统监听器
         fileSystemListener = new FileSystemListener(Paths.get(project.getBasePath()));
 
-        // 为每个打开的编辑器添加监听器
+        // 为每个打开的编辑器添加监听器到文档监听器组
         EditorFactory.getInstance().addEditorFactoryListener(new EditorFactoryListener() {
             @Override
             public void editorCreated(@NotNull EditorFactoryEvent event) {
-                event.getEditor().getDocument().addDocumentListener(new DocumentListener(project));
+                DocumentListener documentListener = new DocumentListener(project);
+                event.getEditor().getDocument().addDocumentListener(documentListener);
+                documentListeners.add(documentListener);
             }
         }, project);
     }

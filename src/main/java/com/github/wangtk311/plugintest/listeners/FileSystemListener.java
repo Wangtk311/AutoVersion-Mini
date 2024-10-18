@@ -10,13 +10,18 @@ import java.util.Map;
 public class FileSystemListener {
 
     private final Path projectPath;
+    private boolean isListening = true;
 
     public FileSystemListener(Path projectPath) {
         this.projectPath = projectPath;
+        enableListening();
         startListening();
     }
 
     private void startListening() {
+        if (!isListening) {
+            return;
+        }
         try {
             WatchService watchService = FileSystems.getDefault().newWatchService();
             projectPath.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE);
@@ -55,6 +60,9 @@ public class FileSystemListener {
     }
 
     private void handleFileCreate(Path filePath) {
+        if (!isListening) {
+            return;
+        }
         try {
             String fileContent = new String(Files.readAllBytes(filePath));
             FileChange fileChange = new FileChange(filePath.toString(), fileContent, FileChange.ChangeType.ADD);
@@ -65,7 +73,18 @@ public class FileSystemListener {
     }
 
     private void handleFileDelete(Path filePath) {
+        if (!isListening) {
+            return;
+        }
         FileChange fileChange = new FileChange(filePath.toString(), "", FileChange.ChangeType.DELETE);
         VersionStorage.saveVersion(Map.of(filePath.toString(), fileChange)); // 保存版本
+    }
+
+    public void pauseListening() {
+        isListening = false;
+    }
+
+    public void enableListening() {
+        isListening = true;
     }
 }
