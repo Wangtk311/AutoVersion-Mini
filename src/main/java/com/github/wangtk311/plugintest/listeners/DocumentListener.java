@@ -19,7 +19,7 @@ import java.util.Map;
 public class DocumentListener implements com.intellij.openapi.editor.event.DocumentListener {
     private final Project project;
     private final Map<String, String> lastFileContentMap = new HashMap<>();
-    private boolean isListening = true;
+    public static boolean isListening = false;
 
     public DocumentListener(Project project) {
         this.project = project;
@@ -92,5 +92,4 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
     public void pauseListening() {
         isListening = false;
     }
-
 }

@@ -1,6 +1,7 @@
 package com.github.wangtk311.plugintest.toolWindow;
 
 import com.github.wangtk311.plugintest.components.MyProjectComponent;
+import com.github.wangtk311.plugintest.listeners.FileSystemListener;
 import com.github.wangtk311.plugintest.services.FileChange;
 import com.github.wangtk311.plugintest.services.VersionStorage;
 import com.github.wangtk311.plugintest.listeners.DocumentListener;
@@ -27,8 +28,8 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
 
     private JPanel historyWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
         JPanel panel = new JPanel();
-        JLabel label = new JLabel("AutoVersion Mini 已记录的版本\n\n", SwingConstants.CENTER);
-        JLabel label2 = new JLabel("·", SwingConstants.CENTER);
+        JLabel label = new JLabel("AutoVersion Mini 已存档的版本\n\n", SwingConstants.CENTER);
+        JLabel label2 = new JLabel("-", SwingConstants.CENTER);
         JButton gitButton = new JButton("→☍ 将最新版本推送到Git");
         gitButton.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(panel, "确定要推送到Git吗?\n这将保存当前的版本作为一个大版本的提交，\n并保存一系列小版本的提交。\n该操作不可逆!", "双重确认", JOptionPane.YES_NO_OPTION);
@@ -44,7 +45,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         // 创建UI列表以显示所有版本
         DefaultListModel<String> listModel = new DefaultListModel<>();
         for (int i = 0; i < projectVersions.size(); i++) {
-            listModel.addElement("【 Version " + (i + 1) + " 】版本 - 共保存 " + projectVersions.get(i).size() + " 个文件变动");
+            listModel.addElement("【 Version " + (i + 1) + " 】版本 - 存档了 " + projectVersions.get(i).size() + " 个文件");
         }
 
         JList<String> versionList = new JBList<>(listModel);
@@ -62,7 +63,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
             int confirm = JOptionPane.showConfirmDialog(panel, "确定要抹掉所有历史版本吗?\n这将同步保存当前状态作为一个历史版本。\n该操作不可逆!", "双重确认", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 // 暂时关闭文件系统监听器和文档监听器
-
+                pauseAllListeners(project);
 
                 // 清空autoversion.record.bin文件(写入空列表)
                 VersionStorage.clearVersions();
@@ -98,6 +99,12 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
 
                 // 显示成功信息
                 JOptionPane.showMessageDialog(panel, "已抹除所有历史版本!", "抹除成功", JOptionPane.CLOSED_OPTION);
+
+                // 从磁盘刷新一下项目目录
+                project.getBaseDir().refresh(false, true);
+
+                // 重新启用文件系统监听器和文档监听器
+                enableAllListeners(project);
 
                 // 清空当前面板内容并重新加载历史版本列表
                 panel.removeAll(); // 清空面板
@@ -166,6 +173,9 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         restoreButton.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(panel, "确定要回滚到 Version " + (versionIndex + 1) + " 版本吗?\n这将丢弃当前的工作!", "双重确认", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
+                // 暂时关闭文件系统监听器和文档监听器
+                pauseAllListeners(project);
+
                 System.out.println("回滚到 Version " + (versionIndex + 1) + " 版本");
                 // 首先从根目录递归检索删除当前项目中的每一个文件(除了autoversion.record.bin文件)，然后依照版本从前到后逐步恢复选中版本的文件，可以避免留下当前版本中存在但回滚目标版本中不存在的文件
                 try {
@@ -201,7 +211,21 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                         }
                     }
                 }
-                JOptionPane.showMessageDialog(panel, "已回滚到 Version " + (selectedVersion + 1) + " 版本!\n请在项目目录中选择从磁盘重新加载。", "回滚成功", JOptionPane.CLOSED_OPTION);
+                JOptionPane.showMessageDialog(panel, "已回滚到 Version " + (selectedVersion + 1) + " 版本!", "回滚成功", JOptionPane.CLOSED_OPTION);
+
+                // 从磁盘刷新一下项目目录
+                project.getBaseDir().refresh(false, true);
+
+                // 重新启用文件系统监听器和文档监听器
+                enableAllListeners(project);
+
+                // 清空当前面板内容并重新加载历史版本列表
+                panel.removeAll(); // 清空面板
+                panel.add(historyWindowContent(project, toolWindow)); // 显示历史版本列表
+
+                // 重新绘制面板
+                panel.revalidate(); // 通知 Swing 重新布局
+                panel.repaint(); // 重新绘制面板
             }
         });
 
@@ -218,4 +242,23 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         panel.revalidate(); // 刷新UI
         panel.repaint();
     }
+
+    public void pauseAllListeners(Project project) {
+        MyProjectComponent myProjectComponent = MyProjectComponent.getInstance(project);
+        myProjectComponent.fileSystemListener.pauseListening();
+        for (DocumentListener documentListener : myProjectComponent.documentListeners) {
+            documentListener.pauseListening();
+        }
+        System.out.println("Pause listeners.");
+    }
+
+    public void enableAllListeners(Project project) {
+        MyProjectComponent myProjectComponent = MyProjectComponent.getInstance(project);
+        myProjectComponent.fileSystemListener.enableListening();
+        for (DocumentListener documentListener : myProjectComponent.documentListeners) {
+            documentListener.enableListening();
+        }
+        System.out.println("Enable listeners.");
+    }
 }
+

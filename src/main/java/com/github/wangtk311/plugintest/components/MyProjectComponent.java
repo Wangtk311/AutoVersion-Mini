@@ -8,7 +8,10 @@ import com.intellij.openapi.components.ProjectComponent;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.event.EditorFactoryEvent;
 import com.intellij.openapi.editor.event.EditorFactoryListener;
+import com.intellij.openapi.fileEditor.FileEditor;
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -28,10 +31,12 @@ public class MyProjectComponent implements ProjectComponent {
 
     private MyProjectComponent(Project project) {
         this.project = project;
+        myProjectComponent = this;
     }
 
     public static MyProjectComponent getInstance(Project project) {
         if (myProjectComponent == null) {
+            System.out.println("MyProjectComponent initialized");
             myProjectComponent = new MyProjectComponent(project);
         }
         return myProjectComponent;
@@ -39,6 +44,13 @@ public class MyProjectComponent implements ProjectComponent {
 
     @Override
     public void projectOpened() {
+        // 打开项目时关闭所有打开的编辑器
+        FileEditorManager editorManager = FileEditorManager.getInstance(project);
+        FileEditor[] editors =  editorManager.getAllEditors();
+        for (FileEditor editor : editors) {
+            editorManager.closeFile(editor.getFile());
+        }
+
         VersionStorage.VERSION_STORAGE_FILE = project.getBasePath() + "/autoversion.record.bin";
         System.out.println("AutoVersion History file: " + VersionStorage.VERSION_STORAGE_FILE);
         File versionFile = new File(VersionStorage.VERSION_STORAGE_FILE);
@@ -72,7 +84,8 @@ public class MyProjectComponent implements ProjectComponent {
         }
 
         // 初始化文件系统监听器
-        fileSystemListener = new FileSystemListener(Paths.get(project.getBasePath()));
+        fileSystemListener = new FileSystemListener(project);
+        System.out.println("FileSystemListener initialized: " + fileSystemListener);
 
         // 为每个打开的编辑器添加监听器到文档监听器组
         EditorFactory.getInstance().addEditorFactoryListener(new EditorFactoryListener() {
@@ -83,5 +96,7 @@ public class MyProjectComponent implements ProjectComponent {
                 documentListeners.add(documentListener);
             }
         }, project);
+
+
     }
 }
