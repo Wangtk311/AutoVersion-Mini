@@ -56,6 +56,7 @@ dependencies {
         zipSigner()
         testFramework(TestFrameworkType.Platform)
 
+        implementation("com.github.javaparser:javaparser-symbol-solver-core:3.26.2")
         implementation("com.github.java-diff-utils:java-diff-utils:master-SNAPSHOT")
     }
 }

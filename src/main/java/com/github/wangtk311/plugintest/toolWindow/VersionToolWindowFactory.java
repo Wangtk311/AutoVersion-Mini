@@ -32,7 +32,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         JLabel label2 = new JLabel("-", SwingConstants.CENTER);
         JButton gitButton = new JButton("→☍ 将最新版本推送到Git");
         gitButton.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(panel, "确定要推送到Git吗?\n这将保存当前的版本作为一个大版本的提交，\n并保存一系列小版本的提交。\n该操作不可逆!", "双重确认", JOptionPane.YES_NO_OPTION);
+            int confirm = JOptionPane.showConfirmDialog(panel, "确定要推送到Git吗?\n这将保存当前的版本作为一个大版本的提交,\n并保存一系列小版本的提交。\n该操作不可逆!", "双重确认", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
 
                 JOptionPane.showMessageDialog(panel, "已成功推送到Git!", "推送成功", JOptionPane.CLOSED_OPTION);
@@ -171,7 +171,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         // 添加“恢复版本”按钮
         JButton restoreButton = new JButton("↑ 回滚到此版本");
         restoreButton.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(panel, "确定要回滚到 Version " + (versionIndex + 1) + " 版本吗?\n这将丢弃当前的工作!", "双重确认", JOptionPane.YES_NO_OPTION);
+            int confirm = JOptionPane.showConfirmDialog(panel, "确定要回滚到 Version " + (versionIndex + 1) + " 版本吗?\n这将丢弃当前的工作,\n同时丢弃回滚目标后面的版本!", "双重确认", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 // 暂时关闭文件系统监听器和文档监听器
                 pauseAllListeners(project);
@@ -196,6 +196,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 int selectedVersion = versionIndex;
                 Map<String, FileChange> versionFiles;
 
+                // 从第一个版本开始恢复到选中的版本
                 for (int i = 0; i <= versionIndex; i++){
                     versionFiles = VersionStorage.getVersion(i);
                     for (Map.Entry<String, FileChange> entry : versionFiles.entrySet()) {
@@ -211,6 +212,16 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                         }
                     }
                 }
+
+                // 丢弃回滚目标后面的版本
+                for (int i = VersionStorage.getProjectVersions().size() - 1; i > selectedVersion; i--) {
+                    VersionStorage.getProjectVersions().remove(i);
+                }
+
+                // 将版本数据写入版本历史文件
+                VersionStorage.saveVersionsToDisk();
+
+                // 显示成功信息
                 JOptionPane.showMessageDialog(panel, "已回滚到 Version " + (selectedVersion + 1) + " 版本!", "回滚成功", JOptionPane.CLOSED_OPTION);
 
                 // 从磁盘刷新一下项目目录
