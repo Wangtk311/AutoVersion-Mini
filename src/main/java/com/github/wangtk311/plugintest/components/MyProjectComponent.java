@@ -15,7 +15,9 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -55,6 +57,24 @@ public class MyProjectComponent implements ProjectComponent {
         System.out.println("AutoVersion History file: " + VersionStorage.VERSION_STORAGE_FILE);
         File versionFile = new File(VersionStorage.VERSION_STORAGE_FILE);
 
+        VersionStorage.VERSION_MAP_FILE = project.getBasePath() + "/autoversion.map.bin";
+        System.out.println("AutoVersion Map file: " + VersionStorage.VERSION_MAP_FILE);
+        File versionMapFile = new File(VersionStorage.VERSION_MAP_FILE);
+
+        // 加载大小版本映射
+        if (versionMapFile.exists()) {
+            VersionStorage.loadMapFromDisk();
+        } else {
+            try {
+                Files.createFile(versionMapFile.toPath());
+                Map<Integer, Integer> majorToMinorVersionMap = new HashMap<>();
+                majorToMinorVersionMap.put(1, 0);
+                VersionStorage.saveMapToDisk();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         // 加载历史版本
         if (versionFile.exists()) {
             VersionStorage.loadVersionsFromDisk();
@@ -63,13 +83,16 @@ public class MyProjectComponent implements ProjectComponent {
             Map<String, FileChange> fileChanges = new HashMap<>();
             Path projectRoot = Paths.get(project.getBasePath());
 
+
             // 递归遍历项目目录中的文件
             try {
                 Files.walk(projectRoot).forEach(path -> {
                     File file = path.toFile();
                     if (file.isFile() && !file.getName().equals("autoversion.record.bin")) {
                         try {
-                            String filePath = file.getCanonicalPath();
+                            String filePath = file.getPath();
+                            // 替换所有的反斜杠为正斜杠
+                            filePath = filePath.replace("\\", "/");
                             fileChanges.put(filePath, new FileChange(filePath, new String(Files.readAllBytes(path)), FileChange.ChangeType.ADD));
                         } catch (IOException e) {
                             e.printStackTrace();
@@ -97,6 +120,6 @@ public class MyProjectComponent implements ProjectComponent {
             }
         }, project);
 
-
+        System.out.println("Plugin initialized.");
     }
 }

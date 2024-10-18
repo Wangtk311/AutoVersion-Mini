@@ -34,18 +34,54 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         gitButton.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(panel, "确定要推送到Git吗?\n这将保存当前的版本作为一个大版本的提交,\n并保存一系列小版本的提交。\n该操作不可逆!", "双重确认", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
+                int latestMinorVersion = VersionStorage.getProjectVersions().size() - 1;
+                // 更新大版本号映射表
+                VersionStorage.majorToMinorVersionMap.put(VersionStorage.majorToMinorVersionMap.size() + 1, latestMinorVersion);
+                // 将版本数据写入版本映射文件
+                VersionStorage.saveMapToDisk();
 
+                //
+                // 操作
+                //
                 JOptionPane.showMessageDialog(panel, "已成功推送到Git!", "推送成功", JOptionPane.CLOSED_OPTION);
+
+                // 清空当前面板内容并重新加载历史版本列表
+                panel.removeAll(); // 清空面板
+                panel.add(historyWindowContent(project, toolWindow)); // 显示历史版本列表
+
+                // 重新绘制面板
+                panel.revalidate(); // 通知 Swing 重新布局
+                panel.repaint(); // 重新绘制面板
             }
         });
 
         // 获取所有历史版本
         List<Map<String, FileChange>> projectVersions = VersionStorage.getProjectVersions();
 
+        // 打印所有映射
+        System.out.println("majorToMinorVersionMap: " + VersionStorage.majorToMinorVersionMap);
+
         // 创建UI列表以显示所有版本
         DefaultListModel<String> listModel = new DefaultListModel<>();
-        for (int i = 0; i < projectVersions.size(); i++) {
-            listModel.addElement("【 Version " + (i + 1) + " 】版本 - 存档了 " + projectVersions.get(i).size() + " 个文件");
+        for (int majorVersion = 1; majorVersion <= VersionStorage.majorToMinorVersionMap.size(); majorVersion++) {
+            int startMinorVersion = VersionStorage.majorToMinorVersionMap.get(majorVersion);
+            int endMinorVersion;
+
+            // 判断是否是最后一个大版本
+            if (majorVersion == VersionStorage.majorToMinorVersionMap.size()) {
+                // 如果是最后一个大版本，显示到最新的小版本
+                endMinorVersion = projectVersions.size() - 1;
+            } else {
+                // 否则，显示到下一个大版本的前一个小版本
+                int nextStartMinorVersion = VersionStorage.majorToMinorVersionMap.get(majorVersion + 1);
+                endMinorVersion = nextStartMinorVersion - 1;
+            }
+
+            // 根据起始小版本和结束小版本，生成每个小版本的显示条目
+            for (int minorVersion = startMinorVersion; minorVersion <= endMinorVersion; minorVersion++) {
+                listModel.addElement("【 Version " + majorVersion + "." + (minorVersion - startMinorVersion)
+                        + " 】版本 - 存档了 " + projectVersions.get(minorVersion).size() + " 个文件变动");
+            }
         }
 
         JList<String> versionList = new JBList<>(listModel);
@@ -68,6 +104,9 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 // 清空autoversion.record.bin文件(写入空列表)
                 VersionStorage.clearVersions();
 
+                // 清空版本映射表
+                VersionStorage.majorToMinorVersionMap.clear();
+
                 // 创建新的 fileChanges map 来保存当前项目状态
                 Map<String, FileChange> fileChanges = new HashMap<>();
                 Path projectRoot = Paths.get(project.getBasePath());
@@ -78,7 +117,9 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                         File file = path.toFile();
                         if (file.isFile() && !file.getName().equals("autoversion.record.bin")) {
                             try {
-                                String filePath = file.getCanonicalPath(); // 获取文件的绝对路径
+                                String filePath = file.getCanonicalPath();
+                                // 替换所有的反斜杠为正斜杠
+                                filePath = filePath.replace("\\", "/");
                                 // 将文件的路径和 FileChange 实例放入 map, 保存文件内容
                                 String fileContent = new String(Files.readAllBytes(path)); // 读取文件内容
                                 fileChanges.put(filePath, new FileChange(filePath, fileContent, FileChange.ChangeType.ADD));
@@ -93,6 +134,9 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
 
                 // 保存新的版本
                 VersionStorage.saveVersion(fileChanges);
+
+                // 保存版本映射表
+                VersionStorage.majorToMinorVersionMap.put(1, 0);
 
                 // 将版本数据写入磁盘
                 VersionStorage.saveVersionsToDisk();
@@ -171,7 +215,25 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         // 添加“恢复版本”按钮
         JButton restoreButton = new JButton("↑ 回滚到此版本");
         restoreButton.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(panel, "确定要回滚到 Version " + (versionIndex + 1) + " 版本吗?\n这将丢弃当前的工作,\n同时丢弃回滚目标后面的版本!", "双重确认", JOptionPane.YES_NO_OPTION);
+            // 找到当前小版本对应的大版本和小版本
+            int majorVersion = 0;
+            int minorVersion = 0;
+
+            // 遍历大版本映射表，查找对应的大版本和小版本
+            for (int major : VersionStorage.majorToMinorVersionMap.keySet()) {
+                int startMinorVersion = VersionStorage.majorToMinorVersionMap.get(major);
+                if (versionIndex >= startMinorVersion) {
+                    majorVersion = major;
+                    minorVersion = versionIndex - startMinorVersion;
+                } else {
+                    break;
+                }
+            }
+
+            // 显示确认对话框，包含大版本和小版本信息
+            int confirm = JOptionPane.showConfirmDialog(panel,
+                    "确定要回滚到 Version " + majorVersion + "." + minorVersion + " 版本吗?\n这将丢弃当前的工作,\n同时丢弃回滚目标后面的版本!",
+                    "双重确认", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 // 暂时关闭文件系统监听器和文档监听器
                 pauseAllListeners(project);
@@ -213,16 +275,27 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                     }
                 }
 
-                // 丢弃回滚目标后面的版本
+                // 丢弃回滚目标后面的大版本
+                for (int major : VersionStorage.majorToMinorVersionMap.keySet()) {
+                    int startMinorVersion = VersionStorage.majorToMinorVersionMap.get(major);
+                    if (startMinorVersion > selectedVersion) {
+                        VersionStorage.majorToMinorVersionMap.remove(major);
+                    }
+                }
+
+                // 丢弃回滚目标后面的小版本
                 for (int i = VersionStorage.getProjectVersions().size() - 1; i > selectedVersion; i--) {
                     VersionStorage.getProjectVersions().remove(i);
                 }
+
+                // 保存版本映射表
+                VersionStorage.saveMapToDisk();
 
                 // 将版本数据写入版本历史文件
                 VersionStorage.saveVersionsToDisk();
 
                 // 显示成功信息
-                JOptionPane.showMessageDialog(panel, "已回滚到 Version " + (selectedVersion + 1) + " 版本!", "回滚成功", JOptionPane.CLOSED_OPTION);
+                JOptionPane.showMessageDialog(panel, "已回滚到 Version " + majorVersion + "." + minorVersion + " 版本!", "回滚成功", JOptionPane.CLOSED_OPTION);
 
                 // 从磁盘刷新一下项目目录
                 project.getBaseDir().refresh(false, true);

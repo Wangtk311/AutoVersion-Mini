@@ -1,5 +1,6 @@
 package com.github.wangtk311.plugintest.services;
 
+import com.github.weisj.jsvg.F;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 
@@ -10,7 +11,9 @@ import java.util.*;
 
 public class VersionStorage {
     public static String VERSION_STORAGE_FILE = "autoversion.record.bin";  // 文件名，保存版本数据
+    public static String VERSION_MAP_FILE = "autoversion.map.bin";  // 文件名，保存版本映射数据
     private static List<Map<String, FileChange>> projectVersions = new ArrayList<>();
+    public static Map<Integer, Integer> majorToMinorVersionMap;
 
     // 初始化时从磁盘加载版本历史
     static {
@@ -64,6 +67,7 @@ public class VersionStorage {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        saveMapToDisk();
     }
 
     // 从磁盘加载版本
@@ -76,10 +80,36 @@ public class VersionStorage {
                 e.printStackTrace();
             }
         }
+        loadMapFromDisk();
     }
 
     public static void clearVersions() {
         projectVersions.clear();
         saveVersionsToDisk();
+    }
+
+    public static void loadMapFromDisk() {
+        File versionMapFile = new File(VERSION_MAP_FILE);
+        if (versionMapFile.exists()) {
+            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(versionMapFile))) {
+                majorToMinorVersionMap = (Map<Integer, Integer>) ois.readObject();
+            } catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+        else{
+            majorToMinorVersionMap = new HashMap<>(){{
+                put(1, 0);
+            }};
+            saveMapToDisk();
+        }
+    }
+
+    public static void saveMapToDisk() {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(VERSION_MAP_FILE))) {
+            oos.writeObject(majorToMinorVersionMap);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
