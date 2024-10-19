@@ -1,5 +1,6 @@
 package com.github.wangtk311.plugintest.listeners;
 
+import com.github.difflib.patch.Patch;
 import com.github.wangtk311.plugintest.services.FileChange;
 import com.github.wangtk311.plugintest.services.VersionStorage;
 import com.github.wangtk311.plugintest.toolWindow.VersionToolWindowFactory;
@@ -19,21 +20,19 @@ import com.github.difflib.*;
 import org.jetbrains.annotations.NotNull;
 
 
-import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 
 public class DocumentListener implements com.intellij.openapi.editor.event.DocumentListener {
     private final Project project;
-    private final Map<String, String> lastFileContentMap = new HashMap<>();
     public static boolean isListening = false;
     public static int versionIndex;
 
     private Timer timer = new Timer(); // 计时器实例
     boolean Timerstatus = false;
     private static final long DELAY = 3000; // 延迟时间（毫秒）
+
+    private String oldFilecontent = "";
+    private boolean first = true;
 
     public DocumentListener(Project project) {
         this.project = project;
@@ -46,42 +45,45 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
             return;
         }
         VirtualFile currentFile = getCurrentFile();
-        String currentFilecontent = getCurrentFileContent(currentFile);
         String filePath = getCurrentFilePath(currentFile);
-
-        System.out.println("filePath: " + filePath);
-        System.out.println("nowfile: \n" + currentFilecontent);
-
-        // 找到最后一个包含当前追踪文件变动且不是DELETE的版本
-        for (int i = 0; i < VersionStorage.getProjectVersions().size(); i++) {
-            Map<String, FileChange> version = VersionStorage.getProjectVersions().get(i);
-            if (version.containsKey(filePath) && version.get(filePath).getChangeType() != FileChange.ChangeType.DELETE) {
-                versionIndex = i;
+        if (first) {
+            System.out.println("Find last version.");
+            // 找到最后一个包含当前追踪文件变动且不是DELETE的版本
+            for (int i = 0; i < VersionStorage.getProjectVersions().size(); i++) {
+                Map<String, FileChange> version = VersionStorage.getProjectVersions().get(i);
+                if (version.containsKey(filePath) && version.get(filePath).getChangeType() != FileChange.ChangeType.DELETE) {
+                    versionIndex = i;
+                }
             }
-        }
-        System.out.println("versionIndex: " + versionIndex);
+            System.out.println("versionIndex: " + versionIndex);
 
-        Map<String, FileChange> versionContents = VersionStorage.getVersion(versionIndex);
-        System.out.println("versionContents: " + versionContents);
-        // 打印当前版本的所有文件路径
-        for (String key : versionContents.keySet()) {
-            System.out.println("Version file paths: " + key);
-        }
-        FileChange filechange = versionContents.get(filePath);
-        // 打印当前版本的文件内容
-        System.out.println("filechange: " + filechange);
-        String filecontent = filechange.getFileContent();
-        // 打印当前版本的文件内容
-        System.out.println("filecontent: " + filecontent);
+            Map<String, FileChange> versionContents = VersionStorage.getVersion(versionIndex);
+            System.out.println("versionContents: " + versionContents);
+            // 打印当前版本的所有文件路径
+            for (String key : versionContents.keySet()) {
+                System.out.println("Version file paths: " + key);
+            }
+            FileChange filechange = versionContents.get(filePath);
+            // 打印当前版本的文件内容
+            System.out.println("filechange: " + filechange);
+            String filecontent = filechange.getFileContent();
+            // 打印当前版本的文件内容
+            System.out.println("oldfilecontent: " + filecontent);
+            // 写入oldFilecontent
+            oldFilecontent = filecontent;
 
+            first = false;
+        }
+
+        String currentFilecontent = getCurrentFileContent(currentFile);
+        System.out.println("nowfile: \n" + currentFilecontent);
 
         timer.cancel();
         Timerstatus=false;
         try {
             System.out.println("hasSignificantChanges");
-            if (hasChanges(filecontent, currentFilecontent)) {
-
-
+            //if (hasChanges(filecontent, currentFilecontent)) {
+            if (hasChanges(oldFilecontent, currentFilecontent)) {
                 timer = new Timer();  // 必须重新创建 Timer 实例
                 Timerstatus=true;
             }
@@ -94,11 +96,22 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         TimerTask task = new TimerTask() {
             @Override
             public void run() {
-                ApplicationManager.getApplication().invokeLater(() -> {
+                ApplicationManager.getApplication().invokeLater(()->{
                     saveProjectVersion();
                     refreshToolWindow();
-                    versionIndex = 0;
 
+                    List<String> OldFilecontent = convertStringToList(oldFilecontent);
+                    List<String> CurrentFilecontent = convertStringToList(currentFilecontent);
+                    System.out.println("OldFilecontent:\n " + OldFilecontent);
+                    System.out.println("CurrentFilecontent: \n" + CurrentFilecontent);
+                    // 比较两个文本文件
+                    Patch<String> patch = DiffUtils.diff(OldFilecontent, CurrentFilecontent);
+                    // 输出差异
+                    patch.getDeltas().forEach(delta->{
+                        System.out.println(delta);
+                    });
+
+                    oldFilecontent = getCurrentFileContent(currentFile);
                     System.out.println("Version index: " + (versionIndex + 1));
                 });
             }
@@ -113,7 +126,7 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
         var currentEditor = fileEditorManager.getSelectedEditor();
         VirtualFile currentFile = currentEditor.getFile();
-        String currentFilecontent = FileDocumentManager.getInstance().getDocument(currentFile).getText();
+        //String currentFilecontent = FileDocumentManager.getInstance().getDocument(currentFile).getText();
         return currentFile;
     }
 
@@ -228,20 +241,17 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
 
         // 使用 FileEditorManager 获取当前打开的文件，因为发生粒度变化的文件只可能是当前打开的文件
         VirtualFile file = FileEditorManager.getInstance(project).getSelectedEditor().getFile();
-            Document document = FileDocumentManager.getInstance().getDocument(file);
+        Document document = FileDocumentManager.getInstance().getDocument(file);
 
-            String filePath = file.getPath();
-            String currentContent = document.getText();
+        String filePath = file.getPath();
+        String currentContent = document.getText();
 
-            // 处理文件的新增、删除或修改
-            FileChange.ChangeType changeType = FileChange.ChangeType.MODIFY;
+        // 处理文件的新增、删除或修改
+        FileChange.ChangeType changeType = FileChange.ChangeType.MODIFY;
 
-            // 保存文件变化（包括新增、删除、修改）
-            FileChange fileChange = new FileChange(filePath, currentContent, changeType);
-            fileChanges.put(filePath, fileChange);
-
-            // 更新最后一次文件内容的记录
-            lastFileContentMap.put(filePath, currentContent);
+        // 保存文件变化（包括新增、删除、修改）
+        FileChange fileChange = new FileChange(filePath, currentContent, changeType);
+        fileChanges.put(filePath, fileChange);
 
 
         // 保存项目的文件变化到版本存储中
@@ -262,6 +272,14 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
             toolWindow.getContentManager().removeAllContents(true);  // 清除旧内容
             new VersionToolWindowFactory().createToolWindowContent(project, toolWindow);  // 重新加载内容
         }
+    }
+
+    private static List<String> convertStringToList(String str) {
+        // 使用换行符分割字符串
+        String[] lines = str.split("\n");
+
+        // 将数组转换为 List
+        return new ArrayList<>(Arrays.asList(lines));
     }
 
     public void enableListening() {
