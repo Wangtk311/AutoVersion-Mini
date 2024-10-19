@@ -7,7 +7,7 @@
    viewBox="0 0 32 32"
    version="1.1"
    id="svg1"
-   inkscape:export-filename="位图.svg"
+   inkscape:export-filename="..\..\..\..\..\..\Users\王天阔\Desktop\icon.svg"
    inkscape:export-xdpi="96"
    inkscape:export-ydpi="96"
    sodipodi:docname="icon.svg"
@@ -29,57 +29,35 @@
      inkscape:zoom="19.015625"
      inkscape:cx="13.304848"
      inkscape:cy="16.801972"
-     inkscape:window-width="1664"
-     inkscape:window-height="1173"
-     inkscape:window-x="712"
-     inkscape:window-y="199"
-     inkscape:window-maximized="0"
-     inkscape:current-layer="svg1" />
+     inkscape:window-width="2560"
+     inkscape:window-height="1494"
+     inkscape:window-x="-11"
+     inkscape:window-y="-11"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg1"
+     inkscape:export-bgcolor="#ffffff00" />
   <defs
      id="defs1" />
-  <circle
-     style="fill:none;stroke:#000000;stroke-opacity:1;paint-order:stroke fill markers;stroke-width:2.3;stroke-dasharray:none"
-     id="path3"
-     cx="16.04557"
-     cy="16.082756"
-     r="14.669705" />
-  <text
-     xml:space="preserve"
-     style="font-size:18.4905px;fill:none;stroke:#000000;stroke-width:0.572507;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
-     x="12.139009"
-     y="23.949566"
-     id="text4"
-     transform="scale(1.0400305,0.96151027)"><tspan
-       sodipodi:role="line"
-       id="tspan4"
-       x="12.139009"
-       y="23.949566"
-       style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.572507;stroke-dasharray:none;stroke-opacity:1">V</tspan></text>
-  <text
-     xml:space="preserve"
-     style="font-size:18.4905px;fill:none;stroke:#000000;stroke-width:0.572507;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
-     x="-19.317827"
-     y="-10.477534"
-     id="text4-6"
-     transform="scale(-1.0400305,-0.96151027)"><tspan
-       sodipodi:role="line"
-       id="tspan4-2"
-       x="-19.317827"
-       y="-10.477534"
-       style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.572507;stroke-dasharray:none;stroke-opacity:1">V</tspan></text>
-  <rect
-     style="fill:#000000;stroke:#000000;stroke-width:0.473;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
-     id="rect1"
-     width="4.9433031"
-     height="1.735415"
-     x="8.8874283"
-     y="19.142153" />
+  <ellipse
+     style="opacity:0.802;fill:#ffffff;fill-opacity:0;stroke:#efefef;stroke-width:2.23539;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
+     id="path1"
+     cx="15.952159"
+     cy="16.119942"
+     rx="13.588122"
+     ry="13.830276" />
   <path
-     style="fill:#ffffff;stroke:#000000;stroke-width:0.0248743;paint-order:stroke fill markers"
-     d="m 6.8189537,23.221489 c 0.00964,-0.02687 1.2007669,-3.055686 2.6469461,-6.73071 l 2.6294162,-6.6818623 1.419885,2.089e-4 c 0.780937,1.149e-4 1.448189,0.018202 1.482781,0.040194 0.03459,0.021992 0.953894,2.3466904 2.042891,5.1659984 1.088997,2.819307 2.029003,5.252048 2.088903,5.40609 0.07056,0.181456 0.122345,0.255526 0.147068,0.210354 0.03161,-0.05777 3.723181,-9.612351 4.05505,-10.495361 l 0.103765,-0.2760886 h 1.237674 c 0.969309,0 1.231888,0.014253 1.210993,0.065736 -0.01467,0.036154 -1.203841,3.0534106 -2.642596,6.7050126 l -2.615915,6.639277 -1.478068,-0.0012 -1.478067,-0.0012 -0.467175,-1.221495 c -0.356416,-0.931897 -3.387732,-8.782889 -3.669613,-9.504156 -0.04267,-0.109186 -0.05915,-0.117588 -0.09722,-0.04957 -0.04686,0.08373 -2.471009,6.354596 -2.471009,6.392084 0,0.01137 0.69811,0.02067 1.551356,0.02067 h 1.551356 v 1.104355 1.104355 H 12.081874 10.096369 L 9.6820006,22.192276 9.2676319,23.270337 H 8.0345281 c -0.7366413,0 -1.2260463,-0.01967 -1.2155744,-0.04885 z"
-     id="path1" />
+     style="font-size:16.2843px;opacity:0.802;fill:#f0f0f0;stroke:#efefef;stroke-width:0.707;paint-order:stroke fill markers"
+     d="M 23.980216,10.523499 19.656852,22.325358 H 17.551006 L 13.227642,10.523499 H 14.9187 l 3.725112,10.383099 3.725113,-10.383099 z"
+     id="text1"
+     aria-label="V" />
   <path
-     style="fill:#ffffff;stroke:#000000;stroke-width:0.0248743;paint-order:stroke fill markers"
-     d="M 14.96138,31.840147 C 11.677608,31.587001 8.6504377,30.390215 6.1008408,28.337152 3.8217251,26.501893 1.9968357,23.866412 1.0595204,21.056544 0.1637956,18.371356 0.01646984,15.432005 0.63804306,12.647494 1.5280696,8.6603711 3.912459,5.1995525 7.3361275,2.9255691 9.3025888,1.6194551 11.40557,0.81795392 13.857025,0.4402839 14.86268,0.28535338 17.048683,0.26984874 18.037798,0.410631 c 1.870991,0.26630101 3.453692,0.750594 5.028257,1.5386036 1.698523,0.8500458 2.985262,1.7963838 4.337599,3.1901072 3.804361,3.9207895 5.29663,9.5447602 3.938776,14.8442242 -1.617956,6.314601 -6.935392,10.983516 -13.409809,11.774329 -0.833983,0.101867 -2.219333,0.140217 -2.971241,0.08225 z m 2.919203,-2.334062 c 1.106836,-0.16146 2.178418,-0.440969 3.133383,-0.817307 4.064232,-1.601655 7.12707,-5.095314 8.167323,-9.316146 0.267657,-1.086021 0.350006,-1.717946 0.382962,-2.938778 0.07787,-2.88453 -0.660486,-5.46833 -2.242636,-7.8478996 C 26.73681,7.706402 26.18625,7.0489726 25.407667,6.3004866 23.230761,4.2077343 20.391482,2.9025271 17.355841,2.5990884 16.579709,2.5215073 14.772218,2.5645936 14.065318,2.6775268 12.461978,2.933674 11.170431,3.3521928 9.8134923,4.0553079 4.1640883,6.9826188 1.3205695,13.438541 2.9656206,19.60271 c 0.3484032,1.305501 1.0012952,2.771411 1.7271886,3.87798 2.2709482,3.461889 5.9834798,5.701012 10.1108058,6.098087 0.667617,0.06423 2.422562,0.02277 3.076968,-0.07269 z"
-     id="path2" />
+     style="font-size:16.2843px;opacity:0.802;fill:#f0f0f0;stroke:#efefef;stroke-width:0.707;paint-order:stroke fill markers"
+     d="m 8.5083577,22.297354 4.3293653,-11.799658 2.105845,0.0011 4.317363,11.804056 -1.691057,-8.6e-4 L 13.850041,11.917 10.119648,22.298204 Z"
+     id="text1-6"
+     aria-label="V" />
+  <path
+     id="rect2"
+     style="opacity:0.802;fill:#f0f0f0;stroke:#efefef;stroke-width:0.61994;paint-order:stroke fill markers"
+     d="m 10.294058,18.326139 h 4.065915 v 1.351369 h -4.065915 z"
+     inkscape:label="rect2" />
 </svg>
