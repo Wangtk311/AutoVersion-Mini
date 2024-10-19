@@ -14,13 +14,13 @@ import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Map;
 
 public class FileSystemListener extends VirtualFileAdapter {
 
     public static boolean isListening = false;
     private final Project project;
-    private static final String IGNORED_FILE = "autoversion.record.bin";
 
     public FileSystemListener(Project project) {
         this.project = project;
@@ -42,11 +42,16 @@ public class FileSystemListener extends VirtualFileAdapter {
             return;
         }
         VirtualFile file = event.getFile();
-        // 忽略 autoversion.record.bin 文件
-        if (IGNORED_FILE.equals(file.getName())) {
-            return;
+        Path path = Path.of(file.getPath());
+        String fileName = file.getName();
+
+        if (!fileName.equals("autoversion.record.bin") &&
+                !fileName.equals("autoversion.map.bin") &&
+                !fileName.equals(".gitignore") &&
+                !fileName.equals(".gitattributes") &&
+                !filePathContainsGitFolder(path)) {
+            handleFileCreate(file);
         }
-        handleFileCreate(file);
     }
 
     @Override
@@ -55,11 +60,16 @@ public class FileSystemListener extends VirtualFileAdapter {
             return;
         }
         VirtualFile file = event.getFile();
-        // 忽略 autoversion.record.bin 文件
-        if (IGNORED_FILE.equals(file.getName())) {
-            return;
+        Path path = Path.of(file.getPath());
+        String fileName = file.getName();
+
+        if (!fileName.equals("autoversion.record.bin") &&
+                !fileName.equals("autoversion.map.bin") &&
+                !fileName.equals(".gitignore") &&
+                !fileName.equals(".gitattributes") &&
+                !filePathContainsGitFolder(path)) {
+            handleFileDelete(file);
         }
-        handleFileDelete(file);
     }
 
     @Override
@@ -68,11 +78,16 @@ public class FileSystemListener extends VirtualFileAdapter {
             return;
         }
         VirtualFile file = event.getFile();
-        // 忽略 autoversion.record.bin 文件
-        if (IGNORED_FILE.equals(file.getName())) {
-            return;
+        Path oldParentPath = Path.of(event.getOldParent().getPath());
+        String fileName = file.getName();
+
+        if (!fileName.equals("autoversion.record.bin") &&
+                !fileName.equals("autoversion.map.bin") &&
+                !fileName.equals(".gitignore") &&
+                !fileName.equals(".gitattributes") &&
+                !filePathContainsGitFolder(oldParentPath)) {
+            handleFileMove(event.getOldParent().getPath(), file);
         }
-        handleFileMove(event.getOldParent().getPath(), file);
     }
 
     @Override
@@ -83,11 +98,13 @@ public class FileSystemListener extends VirtualFileAdapter {
         // 处理文件重命名事件
         if (VirtualFile.PROP_NAME.equals(event.getPropertyName())) {
             VirtualFile file = event.getFile();
-            // 忽略 autoversion.record.bin 文件
-            if (IGNORED_FILE.equals(file.getName())) {
-                return;
+            if (!file.getName().equals("autoversion.record.bin") &&
+                    !file.getName().equals("autoversion.map.bin") &&
+                    !file.getName().equals(".gitignore") &&
+                    !file.getName().equals(".gitattributes") &&
+                    !filePathContainsGitFolder(Path.of(file.getPath()))) {
+                handleFileRename(event.getOldValue().toString(), file);
             }
-            handleFileRename(event.getOldValue().toString(), file);
         }
     }
 
@@ -115,13 +132,23 @@ public class FileSystemListener extends VirtualFileAdapter {
         refreshToolWindow(); // 刷新 ToolWindow
     }
 
+    private void handleFileDelete(String filePath, String fileName) {
+        if (filePath == null) {
+            return;
+        }
+        FileChange fileChange = new FileChange(filePath, "", FileChange.ChangeType.DELETE);
+        VersionStorage.saveVersion(Map.of(filePath, fileChange)); // 保存版本
+        refreshToolWindow(); // 刷新 ToolWindow
+    }
+
     private void handleFileRename(String oldName, VirtualFile file) {
         if (file.isDirectory()) {
             return;
         }
-        // 处理文件重命名，视为删除旧文件并创建新文件
-        handleFileDelete(file);
-        handleFileCreate(file);
+        // 处理文件重命名，视为删除旧文件并创建新文件，但是文件内容不变
+        String oldFilePath = file.getParent().getPath() + "/" + oldName;
+        handleFileDelete(oldFilePath, oldName); // 删除旧文件
+        handleFileCreate(file); // 创建新文件
     }
 
     private void handleFileMove(String oldParentPath, VirtualFile file) {
@@ -130,7 +157,7 @@ public class FileSystemListener extends VirtualFileAdapter {
         }
         // 处理文件移动，视为删除旧文件并创建新文件
         String oldFilePath = oldParentPath + "/" + file.getName();
-        handleFileDelete(file); // 删除旧文件
+        handleFileDelete(oldFilePath, file.getName()); // 删除旧文件
         handleFileCreate(file); // 创建新文件
     }
 
@@ -147,7 +174,12 @@ public class FileSystemListener extends VirtualFileAdapter {
         ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("AutoVersion Mini");
         if (toolWindow != null) {
             toolWindow.getContentManager().removeAllContents(true);  // 清除旧内容
-            new VersionToolWindowFactory().createToolWindowContent(project, toolWindow);  // 重新加载内容
+            VersionToolWindowFactory.getInstance(project).createToolWindowContent(project, toolWindow);  // 重新加载内容
         }
+    }
+
+    // 判断是否属于 .git 文件夹中的文件
+    private boolean filePathContainsGitFolder(Path path) {
+        return path.toString().contains("/.git/");
     }
 }

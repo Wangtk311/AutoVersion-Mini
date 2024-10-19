@@ -44,6 +44,20 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         if (!isListening) {
             return;
         }
+        FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
+        if (!fileEditorManager.hasOpenFiles()) {
+            return;
+        }
+        // 排除 autoversion.record.bin 文件和 autoversion.map.bin 文件，以及gitignore、gitattributes和.git文件夹下的文件
+        VirtualFile file = FileDocumentManager.getInstance().getFile(event.getDocument());
+        if (file == null) {
+            return;
+        }
+        String testfilePath = file.getPath();
+        if (testfilePath.contains("autoversion.record.bin") || testfilePath.contains("autoversion.map.bin") ||
+                testfilePath.contains(".gitignore") || testfilePath.contains(".gitattributes") || testfilePath.contains(".git/")) {
+            return;
+        }
         VirtualFile currentFile = getCurrentFile();
         String filePath = getCurrentFilePath(currentFile);
         if (first) {
@@ -82,7 +96,6 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         Timerstatus=false;
         try {
             System.out.println("hasSignificantChanges");
-            //if (hasChanges(filecontent, currentFilecontent)) {
             if (hasChanges(oldFilecontent, currentFilecontent)) {
                 timer = new Timer();  // 必须重新创建 Timer 实例
                 Timerstatus=true;
@@ -124,6 +137,9 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
 
     private VirtualFile getCurrentFile() {
         FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
+        if (!fileEditorManager.hasOpenFiles()) {
+            return null;
+        }
         var currentEditor = fileEditorManager.getSelectedEditor();
         VirtualFile currentFile = currentEditor.getFile();
         //String currentFilecontent = FileDocumentManager.getInstance().getDocument(currentFile).getText();
@@ -131,11 +147,19 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
     }
 
     private String getCurrentFileContent(VirtualFile currentFile) {
+        FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
+        if (!fileEditorManager.hasOpenFiles()) {
+            return null;
+        }
         String currentFilecontent = FileDocumentManager.getInstance().getDocument(currentFile).getText();
         return currentFilecontent;
     }
 
     private String getCurrentFilePath(VirtualFile currentFile) {
+        FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
+        if (!fileEditorManager.hasOpenFiles()) {
+            return null;
+        }
         String filePath = currentFile.getPath();
         return filePath;
     }
@@ -270,7 +294,7 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("AutoVersion Mini");
         if (toolWindow != null) {
             toolWindow.getContentManager().removeAllContents(true);  // 清除旧内容
-            new VersionToolWindowFactory().createToolWindowContent(project, toolWindow);  // 重新加载内容
+            VersionToolWindowFactory.getInstance(project).createToolWindowContent(project, toolWindow);  // 重新加载内容
         }
     }
 

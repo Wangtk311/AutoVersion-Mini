@@ -1,10 +1,13 @@
 package com.github.wangtk311.plugintest.toolWindow;
 
 import com.github.wangtk311.plugintest.components.MyProjectComponent;
-import com.github.wangtk311.plugintest.listeners.FileSystemListener;
+import com.intellij.ide.structureView.impl.StructureViewFactoryImpl;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.github.wangtk311.plugintest.services.FileChange;
 import com.github.wangtk311.plugintest.services.VersionStorage;
 import com.github.wangtk311.plugintest.listeners.DocumentListener;
+import com.intellij.openapi.fileEditor.FileEditor;
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
@@ -25,6 +28,18 @@ import java.util.List;
 import java.util.Map;
 
 public class VersionToolWindowFactory implements ToolWindowFactory {
+    private static VersionToolWindowFactory instance;
+
+    private VersionToolWindowFactory() {
+
+    }
+
+    public static VersionToolWindowFactory getInstance(Project project) {
+        if (instance == null) {
+            instance = new VersionToolWindowFactory();
+        }
+        return instance;
+    }
 
     private JPanel historyWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
         JPanel panel = new JPanel();
@@ -106,10 +121,13 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
 
         JButton backButton = new JButton("✖ 抹掉所有历史版本");
         backButton.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(panel, "确定要抹掉所有历史版本吗?\n这将同步保存当前状态作为一个历史版本。\n该操作不可逆!", "双重确认", JOptionPane.YES_NO_OPTION);
+            int confirm = JOptionPane.showConfirmDialog(panel, "确定要抹掉所有历史版本吗?\n这将同步保存当前状态作为第一个\n历史版本并提交到Git。\n该操作不可逆!", "双重确认", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 // 暂时关闭文件系统监听器和文档监听器
                 pauseAllListeners(project);
+
+                // 保存现在所有编辑器中的文件到磁盘
+                FileDocumentManager.getInstance().saveAllDocuments();
 
                 // 清空autoversion.record.bin文件(写入空列表)
                 VersionStorage.clearVersions();
@@ -121,20 +139,29 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 Map<String, FileChange> fileChanges = new HashMap<>();
                 Path projectRoot = Paths.get(project.getBasePath());
 
-                // 使用 Files.walk 递归遍历项目目录及其子目录中的所有文件
+                // 使用 Files.walk 递归遍历项目目录及其子目录中的所有文件，除了 autoversion.record.bin 文件和 autoversion.map.bin 文件，以及gitignore、gitattributes和.git文件夹下的文件
                 try {
                     Files.walk(projectRoot).forEach(path -> {
                         File file = path.toFile();
-                        if (file.isFile() && !file.getName().equals("autoversion.record.bin")) {
-                            try {
-                                String filePath = file.getCanonicalPath();
-                                // 替换所有的反斜杠为正斜杠
-                                filePath = filePath.replace("\\", "/");
-                                // 将文件的路径和 FileChange 实例放入 map, 保存文件内容
-                                String fileContent = new String(Files.readAllBytes(path)); // 读取文件内容
-                                fileChanges.put(filePath, new FileChange(filePath, fileContent, FileChange.ChangeType.ADD));
-                            } catch (IOException e2) {
-                                e2.printStackTrace();
+                        String fileName = file.getName();
+
+                        // 排除不需要的文件
+                        if (!fileName.equals("autoversion.record.bin") &&
+                                !fileName.equals("autoversion.map.bin") &&
+                                !fileName.equals(".gitignore") &&
+                                !fileName.equals(".gitattributes") &&
+                                !filePathContainsGitFolder(path)) {
+                            if (file.isFile()) {
+                                try {
+                                    String filePath = file.getCanonicalPath();
+                                    // 替换所有的反斜杠为正斜杠
+                                    filePath = filePath.replace("\\", "/");
+                                    // 将文件的路径和 FileChange 实例放入 map, 保存文件内容
+                                    String fileContent = new String(Files.readAllBytes(path)); // 读取文件内容
+                                    fileChanges.put(filePath, new FileChange(filePath, fileContent, FileChange.ChangeType.ADD));
+                                } catch (IOException e2) {
+                                    e2.printStackTrace();
+                                }
                             }
                         }
                     });
@@ -249,14 +276,28 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 // 暂时关闭文件系统监听器和文档监听器
                 pauseAllListeners(project);
 
+                // 关闭所有打开的编辑器
+                FileEditorManager editorManager = FileEditorManager.getInstance(project);
+                FileEditor[] editors =  editorManager.getAllEditors();
+                for (FileEditor editor : editors) {
+                    editorManager.closeFile(editor.getFile());
+                }
+
                 System.out.println("回滚到 Version " + (versionIndex + 1) + " 版本");
-                // 首先从根目录递归检索删除当前项目中的每一个文件(除了autoversion.record.bin文件)，然后依照版本从前到后逐步恢复选中版本的文件，可以避免留下当前版本中存在但回滚目标版本中不存在的文件
+                // 首先从根目录递归检索删除当前项目中的文件，然后依照版本从前到后逐步恢复选中版本的文件，可以避免留下当前版本中存在但回滚目标版本中不存在的文件
                 try {
                     Files.walk(Paths.get(project.getBasePath())).forEach(path -> {
                         File file = path.toFile();
-                        if (file.isFile() && !file.getName().equals("autoversion.record.bin")) {
+                        String fileName = file.getName();
+
+                        // 排除不需要删除的文件
+                        if (file.isFile() && !fileName.equals("autoversion.record.bin") &&
+                                !fileName.equals("autoversion.map.bin") &&
+                                !fileName.equals(".gitignore") &&
+                                !fileName.equals(".gitattributes") &&
+                                !filePathContainsGitFolder(path)) {
                             try {
-                                Files.deleteIfExists(path);
+                                Files.deleteIfExists(path); // 删除文件
                             } catch (IOException e2) {
                                 e2.printStackTrace();
                             }
@@ -311,9 +352,6 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 // 从磁盘刷新一下项目目录
                 project.getBaseDir().refresh(false, true);
 
-                // 重新启用文件系统监听器和文档监听器
-                enableAllListeners(project);
-
                 // 清空当前面板内容并重新加载历史版本列表
                 panel.removeAll(); // 清空面板
                 panel.add(historyWindowContent(project, toolWindow)); // 显示历史版本列表
@@ -321,6 +359,9 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 // 重新绘制面板
                 panel.revalidate(); // 通知 Swing 重新布局
                 panel.repaint(); // 重新绘制面板
+
+                // 重新启用文件系统监听器和文档监听器
+                enableAllListeners(project);
             }
         });
 
@@ -354,6 +395,11 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
             documentListener.enableListening();
         }
         System.out.println("Enable listeners.");
+    }
+
+    // 判断是否属于 .git 文件夹中的文件
+    private boolean filePathContainsGitFolder(Path path) {
+        return path.toString().contains(File.separator + ".git" + File.separator);
     }
 }
 
