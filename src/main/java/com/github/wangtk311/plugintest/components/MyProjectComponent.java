@@ -83,7 +83,6 @@ public class MyProjectComponent implements ProjectComponent {
             Map<String, FileChange> fileChanges = new HashMap<>();
             Path projectRoot = Paths.get(project.getBasePath());
 
-
             // 递归遍历项目目录中的文件
             try {
                 Files.walk(projectRoot).forEach(path -> {
@@ -110,7 +109,7 @@ public class MyProjectComponent implements ProjectComponent {
         fileSystemListener = new FileSystemListener(project);
         System.out.println("FileSystemListener initialized: " + fileSystemListener);
 
-        // 为每个打开的编辑器添加监听器到文档监听器组
+        // 添加监听器到文档监听器组
         EditorFactory.getInstance().addEditorFactoryListener(new EditorFactoryListener() {
             @Override
             public void editorCreated(@NotNull EditorFactoryEvent event) {
