@@ -29,6 +29,7 @@ kotlin {
 // Configure project's dependencies
 repositories {
     mavenCentral()
+    maven { url = uri("https://jitpack.io") } // 添加 jitpack.io 仓库
 
     // IntelliJ Platform Gradle Plugin Repositories Extension - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-repositories-extension.html
     intellijPlatform {
@@ -38,6 +39,8 @@ repositories {
 
 // Dependencies are managed with Gradle version catalog - read more: https://docs.gradle.org/current/userguide/platforms.html#sub:version-catalog
 dependencies {
+    implementation("com.github.javaparser:javaparser-symbol-solver-core:3.26.2")
+    implementation("com.github.java-diff-utils:java-diff-utils:master-SNAPSHOT")
     testImplementation(libs.junit)
 
     // IntelliJ Platform Gradle Plugin Dependencies Extension - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-dependencies-extension.html
@@ -54,6 +57,9 @@ dependencies {
         pluginVerifier()
         zipSigner()
         testFramework(TestFrameworkType.Platform)
+
+        implementation("com.github.javaparser:javaparser-symbol-solver-core:3.26.2")
+        implementation("com.github.java-diff-utils:java-diff-utils:master-SNAPSHOT")
     }
 }
 
