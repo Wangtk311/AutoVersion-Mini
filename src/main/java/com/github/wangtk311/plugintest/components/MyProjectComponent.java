@@ -1,5 +1,7 @@
 package com.github.wangtk311.plugintest.components;
 
+import com.github.difflib.DiffUtils;
+import com.github.difflib.patch.Patch;
 import com.github.wangtk311.plugintest.listeners.DocumentListener;
 import com.github.wangtk311.plugintest.listeners.FileSystemListener; // 引入新添加的监听器
 import com.github.wangtk311.plugintest.services.FileChange;
@@ -21,9 +23,7 @@ import java.io.ObjectInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class MyProjectComponent implements ProjectComponent {
     private final Project project;
@@ -43,6 +43,15 @@ public class MyProjectComponent implements ProjectComponent {
         }
         return myProjectComponent;
     }
+
+    private  List<String> convertStringToList(String str) {//------------------------xinjian-------------------------------------------------------------------------------------------------------------
+        // 使用换行符分割字符串
+        String[] lines = str.split("\n");
+
+        // 将数组转换为 List
+        return new ArrayList<>(Arrays.asList(lines));
+    }
+
 
     @Override
     public void projectOpened() {
@@ -93,7 +102,10 @@ public class MyProjectComponent implements ProjectComponent {
                             String filePath = file.getPath();
                             // 替换所有的反斜杠为正斜杠
                             filePath = filePath.replace("\\", "/");
-                            fileChanges.put(filePath, new FileChange(filePath, new String(Files.readAllBytes(path)), FileChange.ChangeType.ADD));
+                            List<String> emptyList = Collections.emptyList();
+                            List<String> Filecontent =Files.readAllLines(Paths.get(filePath));
+                            Patch<String> patch = DiffUtils.diff(emptyList, Filecontent);
+                            fileChanges.put(filePath, new FileChange(filePath, patch, FileChange.ChangeType.ADD));//--------------------------------------------------------------------------------------------------------------------------------
                         } catch (IOException e) {
                             e.printStackTrace();
                         }

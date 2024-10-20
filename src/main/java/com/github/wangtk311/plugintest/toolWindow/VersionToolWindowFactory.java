@@ -1,5 +1,8 @@
 package com.github.wangtk311.plugintest.toolWindow;
 
+import com.github.difflib.DiffUtils;
+import com.github.difflib.patch.Patch;
+import com.github.difflib.patch.PatchFailedException;
 import com.github.wangtk311.plugintest.components.MyProjectComponent;
 import com.github.wangtk311.plugintest.listeners.FileSystemListener;
 import com.github.wangtk311.plugintest.services.FileChange;
@@ -16,15 +19,26 @@ import org.jetbrains.annotations.NotNull;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
 public class VersionToolWindowFactory implements ToolWindowFactory {
+
+
+    private  List<String> convertStringToList(String str) {//------------------------xinjian------------------------------
+        // 使用换行符分割字符串
+        String[] lines = str.split("\n");
+
+        // 将数组转换为 List
+        return new ArrayList<>(Arrays.asList(lines));
+    }
+
 
     private JPanel historyWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
         JPanel panel = new JPanel();
@@ -115,14 +129,18 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 try {
                     Files.walk(projectRoot).forEach(path -> {
                         File file = path.toFile();
-                        if (file.isFile() && !file.getName().equals("autoversion.record.bin")) {
+                        if (file.isFile() && !file.getName().equals("autoversion.record.bin")&& !file.getName().equals("autoversion.map.bin")) {//-----------------------------------------------------------------
                             try {
                                 String filePath = file.getCanonicalPath();
                                 // 替换所有的反斜杠为正斜杠
                                 filePath = filePath.replace("\\", "/");
-                                // 将文件的路径和 FileChange 实例放入 map, 保存文件内容
-                                String fileContent = new String(Files.readAllBytes(path)); // 读取文件内容
-                                fileChanges.put(filePath, new FileChange(filePath, fileContent, FileChange.ChangeType.ADD));
+                                List<String> emptyList = Collections.emptyList();
+                                System.out.println("emptyList size: " + emptyList.size());
+                                List<String> Filecontent = Files.readAllLines(Paths.get(filePath));//--------------------------------------------------需要修改----------------------------
+                                System.out.println("Filecontent///////////////////////////////////////////////////////////\n " + Filecontent);
+                                Patch<String> patch = DiffUtils.diff(emptyList, Filecontent);
+                                System.out.println("\nPatch :***************************************************\n " + patch.toString());
+                                fileChanges.put(filePath, new FileChange(filePath, patch, FileChange.ChangeType.ADD));//-------------------------------------------------------------------------------------------------------------------
                             } catch (IOException e2) {
                                 e2.printStackTrace();
                             }
@@ -189,11 +207,21 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
     }
 
     // 显示选中的版本的文件及其内容
-    private void showVersionDetails(JPanel panel, int versionIndex, Project project, ToolWindow toolWindow) {
+    private void showVersionDetails(JPanel panel, int versionIndex, Project project, ToolWindow toolWindow){
         Map<String, FileChange> versionContents = VersionStorage.getVersion(versionIndex);
-
         panel.removeAll(); // 清除旧内容
-
+//        File versionFile = new File(VersionStorage.VERSION_STORAGE_FILE);
+//
+//        List<Map<String, FileChange>>  projectVersions=null;
+//        if (versionFile.exists()) {
+//            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(versionFile))) {
+//                projectVersions = (List<Map<String, FileChange>>) ois.readObject();
+//            } catch (IOException | ClassNotFoundException e) {
+//                e.printStackTrace();
+//            }
+//        }
+//        Map<String, FileChange> versionContents = projectVersions.get(0);
+        System.out.println("***************************************************************************************************************\n");
         JTextArea textArea = new JTextArea(20, 50);
         textArea.append("历史版本: Version " + (versionIndex + 1) + " 的内容是:\n\n");
         for (Map.Entry<String, FileChange> entry : versionContents.entrySet()) {
@@ -201,8 +229,14 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
             textArea.append("----------------------------------------------\n");
             textArea.append("文件: " + fileChange.getFilePath() + "\n");
             textArea.append("操作: " + fileChange.getChangeType() + "\n");
-            textArea.append("内容:\n\n[===文件开始===]\n" + (fileChange.getFileContent() == null ? "[文件无内容]" : fileChange.getFileContent()) + "\n[===文件结束===]\n\n");
+            textArea.append("内容:\n\n[===文件开始===]\n" + (fileChange.getFileContent(versionIndex) == null ? "[文件无内容]" : fileChange.getFileContent(versionIndex)) + "\n[===文件结束===]\n\n");//-----------------------------------------------------------------------------------
+//            System.out.println("----------------------------------------------\n");
+//            System.out.println("文件: " + fileChange.getFilePath() + "\n");
+//            System.out.println("操作: " + fileChange.getChangeType() + "\n");
+//            System.out.println("内容:\n\n[===文件开始===]\n" + (fileChange.getEachFilePatch().toString() == null ? "[文件无内容]" : fileChange.getEachFilePatch().toString()) + "\n[===文件结束===]\n\n");//--------------------------------------------------
         }
+
+
 
         // 添加“返回”按钮
         JButton backButton = new JButton("◀ 返回版本历史列表");
@@ -243,7 +277,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 try {
                     Files.walk(Paths.get(project.getBasePath())).forEach(path -> {
                         File file = path.toFile();
-                        if (file.isFile() && !file.getName().equals("autoversion.record.bin")) {
+                        if (file.isFile() && !file.getName().equals("autoversion.record.bin")&&!file.getName().equals("autoversion.map.bin")) {//----------------------------------------------------------------------------------------
                             try {
                                 Files.deleteIfExists(path);
                             } catch (IOException e2) {
@@ -269,7 +303,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                                 VersionStorage.deleteFile(filePath);
                                 break;
                             case ADD, MODIFY:
-                                VersionStorage.restoreFileToDirectory(filePath, fileChange.getFileContent());
+                                VersionStorage.restoreFileToDirectory(filePath, fileChange.getFileContent(versionIndex));
                                 break;
                         }
                     }
