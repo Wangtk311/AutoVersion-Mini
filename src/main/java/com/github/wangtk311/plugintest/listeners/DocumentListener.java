@@ -36,10 +36,26 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
     private String oldFilecontent = "";
     private  int i=1;
     private boolean first = true;
-    public DocumentListener(Project project) {
+
+    //**************************************
+    private Document tracingDocument;
+//**************************************
+
+    //**************************************
+    public DocumentListener(Project project, Document document) {
         this.project = project;
+        this.tracingDocument = document;
         enableListening();
     }
+//**************************************
+
+
+    //**************************************
+    public Document getDocument() {
+        return tracingDocument;
+    }
+    //**************************************
+
 
     @Override
     public void documentChanged(@NotNull DocumentEvent event) {
@@ -47,7 +63,24 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
             return;
         }
 
+//*****************************************************************************************************************************************************************************************************************************
+        FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
+        if (!fileEditorManager.hasOpenFiles()) {
+            return;
+        }
+        // 排除 autoversion.record.bin 文件和 autoversion.map.bin 文件，以及gitignore、gitattributes和.git文件夹下的文件
+        VirtualFile file = FileDocumentManager.getInstance().getFile(event.getDocument());
+        if (file == null) {
+            return;
+        }
+        String testfilePath = file.getPath();
+        if (testfilePath.contains("autoversion.record.bin") || testfilePath.contains("autoversion.map.bin") ||
+                testfilePath.contains(".gitignore") || testfilePath.contains(".gitattributes") || testfilePath.contains(".git/")) {
+            return;
+        }
+//***************************************************************************************************************************************************************************************************************************
         VirtualFile currentFile = getCurrentFile();
+        //null是否要返回
         String filePath = getCurrentFilePath(currentFile);
         if (first) {
             System.out.println("Find last version.");
@@ -79,41 +112,11 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         }
 
         String currentFilecontent = getCurrentFileContent(currentFile);
-        //oldFilecontent = getCurrentFileContent(currentFile);
-
-
-       // System.out.println("filePath: " + filePath);
-        //System.out.println("nowfile: \n" + currentFilecontent);
-
-        // 找到最后一个包含当前追踪文件变动且不是DELETE的版本
-//        for (int i = 0; i < VersionStorage.getProjectVersions().size(); i++) {
-//            Map<String, FileChange> version = VersionStorage.getProjectVersions().get(i);
-//            if (version.containsKey(filePath) && version.get(filePath).getChangeType() != FileChange.ChangeType.DELETE) {
-//                versionIndex = i;
-//            }
-//        }
-        //System.out.println("versionIndex: " + versionIndex);
-//
-//        Map<String, FileChange> versionContents = VersionStorage.getVersion(versionIndex);
-        //System.out.println("versionContents: " + versionContents);
-        // 打印当前版本的所有文件路径
-//        for (String key : versionContents.keySet()) {
-//           // System.out.println("Version file paths: " + key);
-//        }
-//        FileChange filechange = versionContents.get(filePath);
-        // 打印当前版本的文件内容
-        //System.out.println("filechange: " + filechange);
-        //String filecontent = null;
-        //filecontent = filechange.getFileContent();
-        // 打印当前版本的文件内容
-        //System.out.println("filecontent: " + filecontent);
-
 
         timer.cancel();
         Timerstatus=false;
         try {
             System.out.println("hasSignificantChanges");
-            //if (hasChanges(filecontent, currentFilecontent)) {
             if (hasChanges(oldFilecontent, currentFilecontent)) {
 
 
@@ -275,22 +278,22 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
 
         // 使用 FileEditorManager 获取当前打开的文件，因为发生粒度变化的文件只可能是当前打开的文件
         VirtualFile file = FileEditorManager.getInstance(project).getSelectedEditor().getFile();
-            Document document = FileDocumentManager.getInstance().getDocument(file);
+        Document document = FileDocumentManager.getInstance().getDocument(file);
 
-            String filePath = file.getPath();
-            System.out.println("filePath: " + filePath);
-            String currentContent = document.getText();
+        String filePath = file.getPath();
+        System.out.println("filePath: " + filePath);
+        //String currentContent = document.getText();
 
-            // 处理文件的新增、删除或修改
-            FileChange.ChangeType changeType = FileChange.ChangeType.MODIFY;
+        // 处理文件的新增、删除或修改
+        FileChange.ChangeType changeType = FileChange.ChangeType.MODIFY;
 
-            // 保存文件变化（包括新增、删除、修改）
-            FileChange fileChange = new FileChange(filePath, patch, changeType);
-            System.out.println("fileChangegetEachFilePatch: " + fileChange.getEachFilePatch());
-            fileChanges.put(filePath, fileChange);
+        // 保存文件变化（包括新增、删除、修改）
+        FileChange fileChange = new FileChange(filePath, patch, changeType);
+        System.out.println("fileChangegetEachFilePatch: " + fileChange.getEachFilePatch());
+        fileChanges.put(filePath, fileChange);
 
-            // 更新最后一次文件内容的记录
-            //lastFileContentMap.put(filePath, currentContent);
+        // 更新最后一次文件内容的记录
+        //lastFileContentMap.put(filePath, currentContent);
 
 
         // 保存项目的文件变化到版本存储中
@@ -309,7 +312,7 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("AutoVersion Mini");
         if (toolWindow != null) {
             toolWindow.getContentManager().removeAllContents(true);  // 清除旧内容
-            new VersionToolWindowFactory().createToolWindowContent(project, toolWindow);  // 重新加载内容
+            VersionToolWindowFactory.getInstance(project).createToolWindowContent(project, toolWindow);  // 重新加载内容
         }
     }
 
