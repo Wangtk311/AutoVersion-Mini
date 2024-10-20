@@ -1,11 +1,15 @@
 package com.github.wangtk311.plugintest.components;
 
-import com.github.wangtk311.plugintest.toolWindow.VersionToolWindowFactory;
+import com.github.difflib.DiffUtils;
+import com.github.difflib.patch.Patch;
+
 import com.github.wangtk311.plugintest.listeners.DocumentListener;
 import com.github.wangtk311.plugintest.listeners.FileSystemListener; // 引入新添加的监听器
 import com.github.wangtk311.plugintest.services.FileChange;
 import com.github.wangtk311.plugintest.services.VersionStorage;
+import com.github.wangtk311.plugintest.toolWindow.VersionToolWindowFactory;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.components.ProjectComponent;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.event.EditorFactoryEvent;
@@ -17,6 +21,7 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import org.jetbrains.annotations.NotNull;
@@ -26,9 +31,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.nio.file.StandardOpenOption;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class MyProjectComponent implements ProjectComponent {
     private final Project project;
@@ -49,58 +54,111 @@ public class MyProjectComponent implements ProjectComponent {
         return myProjectComponent;
     }
 
+
     @Override
     public void projectOpened() {
+        //***********************************************************************
+        // 打开项目时关闭所有打开的编辑器
+        FileEditorManager editorManager = FileEditorManager.getInstance(project);
+        FileEditor[] editors =  editorManager.getAllEditors();
+        for (FileEditor editor : editors) {
+            editorManager.closeFile(editor.getFile());
+        }
+        //***********************************************************************已删除
+
+
+        //***********************************************************************新增*****************************
         System.out.println("Initializing plugin, please wait...");
 
-        // 检查当前目录是否是git仓库，如果不是则创建一个，在gitignore的文件内容最后添加autoversion.record.bin和autoversion.map.bin
         if (!isGitRepository()) {
-            // 使用 ProgressManager 创建一个后台任务
             ProgressManager.getInstance().run(new Task.Modal(project, "Initializing Git Repository", true) {
                 @Override
                 public void run(@NotNull ProgressIndicator indicator) {
                     try {
                         // 执行 git init 命令并等待完成
-                        Process process = Runtime.getRuntime().exec("git init", null, new File(project.getBasePath()));
-                        process.waitFor();
+                        ProcessBuilder initProcessBuilder = new ProcessBuilder("git", "init");
+                        initProcessBuilder.directory(new File(project.getBasePath().replace("\\", "/")));
+                        Process initProcess = initProcessBuilder.start();
+                        int exitCode = initProcess.waitFor();
 
-                        // 在主线程中执行 write action 以确保 .gitignore 文件修改在正确的上下文中进行
+                        if (exitCode != 0) {
+                            System.err.println("git init failed with exit code: " + exitCode);
+                        }
+
+                        // 从磁盘刷新一下项目目录
+                        project.getBaseDir().refresh(false, true);
+
+                        // 在主线程中执行 write action
                         ApplicationManager.getApplication().invokeAndWait(() -> {
                             ApplicationManager.getApplication().runWriteAction(() -> {
                                 try {
+                                    // 刷新虚拟文件系统，但在新线程中执行，避免占用EDT，等待刷新完成再继续
+                                    VirtualFileManager.getInstance().asyncRefresh(() -> {
+                                        System.out.println("Virtual File System refreshed.");
+                                    });
+
+                                    // 尝试获取并创建 .gitignore 文件
                                     VirtualFile gitIgnore = project.getBaseDir().findChild(".gitignore");
-                                    // 如果存在 .gitignore 文件，且其中不包含这两个排除文件，将 autoversion.record.bin 和 autoversion.map.bin 添加到文件末尾
-                                    if (gitIgnore != null) {
-                                        if (new String(gitIgnore.contentsToByteArray()).contains("autoversion.record.bin") &&
-                                                new String(gitIgnore.contentsToByteArray()).contains("autoversion.map.bin")) {
-                                            return;
-                                        }
-                                        else {
-                                            Files.write(Paths.get(project.getBasePath() + "/.gitignore"), "\nautoversion.record.bin\nautoversion.map.bin".getBytes(), java.nio.file.StandardOpenOption.APPEND);
+                                    String toAppend = "\nautoversion.record.bin\nautoversion.map.bin\n";
+                                    String existingContent;
+
+                                    if (gitIgnore != null && gitIgnore.isValid()) {
+                                        // 如果文件已存在，读取其内容
+                                        existingContent = new String(gitIgnore.contentsToByteArray());
+                                        System.out.println("Exist .gitignore:");
+                                        System.out.println(gitIgnore.getPath());
+                                        System.out.println(existingContent);
+
+                                        if (!existingContent.contains("autoversion.record.bin") || !existingContent.contains("autoversion.map.bin")) {
+                                            // 写入内容
+                                            Files.write(Paths.get(gitIgnore.getPath().replace("\\", "/")),
+                                                    toAppend.getBytes(),
+                                                    StandardOpenOption.APPEND);
+                                            System.out.println("Appended to .gitignore.");
+                                        } else {
+                                            System.out.println("gitignore contains autoversion.record.bin and autoversion.map.bin, skip adding.");
                                         }
                                     } else {
-                                        // 如果不存在 .gitignore 文件，创建一个新的文件
-                                        Files.write(Paths.get(project.getBasePath() + "/.gitignore"), "autoversion.record.bin\nautoversion.map.bin".getBytes());
+                                        if (gitIgnore != null) {
+                                            // 如果文件无效，在磁盘上删除
+                                            gitIgnore.delete(this);
+                                        }
+                                        // 创建新的 .gitignore 文件
+                                        System.out.println("Created .gitignore.");
+                                        createGitIgnore(project);
                                     }
                                 } catch (IOException e) {
-                                    e.printStackTrace();
+                                    e.printStackTrace(); // 更好地处理异常
                                 }
                             });
                         });
 
-                        Process process2 = Runtime.getRuntime().exec("git add .", null, new File(project.getBasePath()));
-                        process2.waitFor();
-                        Process process3 = Runtime.getRuntime().exec("git commit -m \"V1.0\"", null, new File(project.getBasePath()));
-                        process3.waitFor();
+                        // 添加和提交
+                        ProcessBuilder addProcessBuilder = new ProcessBuilder("git", "add", ".");
+                        addProcessBuilder.directory(new File(project.getBasePath().replace("\\", "/")));
+                        Process addProcess = addProcessBuilder.start();
+                        addProcess.waitFor();
 
+                        ProcessBuilder commitProcessBuilder = new ProcessBuilder("git", "commit", "-m", "V1.0");
+                        commitProcessBuilder.directory(new File(project.getBasePath().replace("\\", "/")));
+                        Process commitProcess = commitProcessBuilder.start();
+                        commitProcess.waitFor();
 
                     } catch (IOException | InterruptedException e) {
+                        e.printStackTrace();
                         throw new RuntimeException(e);
                     }
                 }
             });
             System.out.println("Git repo initialized.");
         }
+
+
+
+
+        //***********************************************************************
+
+
 
         VersionStorage.VERSION_STORAGE_FILE = project.getBasePath() + "/autoversion.record.bin";
         System.out.println("AutoVersion History file: " + VersionStorage.VERSION_STORAGE_FILE);
@@ -125,7 +183,6 @@ public class MyProjectComponent implements ProjectComponent {
         }
 
         // 加载历史版本
-        System.out.println("Loading versions...");
         if (versionFile.exists()) {
             VersionStorage.loadVersionsFromDisk();
         } else {
@@ -133,7 +190,8 @@ public class MyProjectComponent implements ProjectComponent {
             Map<String, FileChange> fileChanges = new HashMap<>();
             Path projectRoot = Paths.get(project.getBasePath());
 
-            // 递归遍历项目目录中的文件，排除autoversion.record.bin 文件和 autoversion.map.bin 文件，以及gitignore、gitattributes和.git文件夹下的文件
+        //******************************************************************
+            // 递归遍历项目目录中的文件
             try {
                 Files.walk(projectRoot).forEach(path -> {
                     File file = path.toFile();
@@ -147,7 +205,10 @@ public class MyProjectComponent implements ProjectComponent {
                             String filePath = file.getPath();
                             // 替换所有的反斜杠为正斜杠
                             filePath = filePath.replace("\\", "/");
-                            fileChanges.put(filePath, new FileChange(filePath, new String(Files.readAllBytes(path)), FileChange.ChangeType.ADD));
+                            List<String> emptyList = Collections.emptyList();
+                            List<String> Filecontent =Files.readAllLines(Paths.get(filePath));
+                            Patch<String> patch = DiffUtils.diff(emptyList, Filecontent);
+                            fileChanges.put(filePath, new FileChange(filePath, patch, FileChange.ChangeType.ADD));//-------------------------------------
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -164,20 +225,40 @@ public class MyProjectComponent implements ProjectComponent {
         fileSystemListener = new FileSystemListener(project);
         System.out.println("FileSystemListener initialized: " + fileSystemListener);
 
-        // 添加监听器到文档监听器组
+        // 为每个打开的编辑器添加监听器到文档监听器组
         EditorFactory.getInstance().addEditorFactoryListener(new EditorFactoryListener() {
             @Override
             public void editorCreated(@NotNull EditorFactoryEvent event) {
-                DocumentListener documentListener = new DocumentListener(project);
+                DocumentListener documentListener = new DocumentListener(project, event.getEditor().getDocument());
                 event.getEditor().getDocument().addDocumentListener(documentListener);
                 documentListeners.add(documentListener);
             }
+            //************************************************
+            @Override
+            public void editorReleased(@NotNull EditorFactoryEvent event) {
+                // 从文档监听器组documentlisteners中移除监听器,并removedocumentlistener移除文档监听器
+                for (DocumentListener documentListener : documentListeners) {
+                    if (documentListener.getDocument().equals(event.getEditor().getDocument())) {
+                        event.getEditor().getDocument().removeDocumentListener(documentListener);
+                        documentListeners.remove(documentListener);
+                        break;
+                    }
+                }
+            }
+        //************************************************
         }, project);
 
         System.out.println("Plugin initialized.");
+        // 刷新虚拟文件系统
+        VirtualFileManager.getInstance().asyncRefresh(() -> {
+            System.out.println("Virtual File System refreshed.");
+        });
+
         refreshToolWindow();
     }
 
+
+    //***********************************************************************新增*****************************
     // 检查当前目录是否是git仓库
     public boolean isGitRepository() {
         File gitDir = new File(project.getBasePath() + "/.git");
@@ -197,4 +278,36 @@ public class MyProjectComponent implements ProjectComponent {
             VersionToolWindowFactory.getInstance(project).createToolWindowContent(project, toolWindow);  // 重新加载内容
         }
     }
+    //****************************************************************************************************
+
+    private void createGitIgnore(Project project) {
+        AtomicReference<VirtualFile> gitIgnore = new AtomicReference<>();
+        try {
+            // 使用 WriteCommandAction 保证写入安全
+            WriteCommandAction.runWriteCommandAction(project, () -> {
+                try {
+                    VirtualFile baseDir = project.getBaseDir();
+                    // 创建 .gitignore 文件
+                    gitIgnore.set(baseDir.findOrCreateChildData(this, ".gitignore"));
+
+                    // 添加内容到 .gitignore 文件
+                    String content = "\nautoversion.record.bin\nautoversion.map.bin\n";
+                    gitIgnore.get().setBinaryContent(content.getBytes());
+
+                    // 刷新 VirtualFile 系统，确保写入到磁盘
+                    gitIgnore.get().refresh(false, false);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+
+            // 刷新项目目录，确保 IntelliJ IDEA 能够检测到新的文件
+            VirtualFileManager.getInstance().syncRefresh();
+            System.out.println("Created .gitignore in project root.");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
 }

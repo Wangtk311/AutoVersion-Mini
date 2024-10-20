@@ -1,14 +1,21 @@
 package com.github.wangtk311.plugintest.toolWindow;
 
+import com.github.difflib.DiffUtils;
+import com.github.difflib.patch.Patch;
+import com.github.difflib.patch.PatchFailedException;
 import com.github.wangtk311.plugintest.components.MyProjectComponent;
-import com.intellij.ide.structureView.impl.StructureViewFactoryImpl;
-import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.github.wangtk311.plugintest.listeners.FileSystemListener;
 import com.github.wangtk311.plugintest.services.FileChange;
 import com.github.wangtk311.plugintest.services.VersionStorage;
 import com.github.wangtk311.plugintest.listeners.DocumentListener;
+import com.intellij.openapi.command.WriteCommandAction;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.ui.components.JBList;
@@ -19,27 +26,29 @@ import org.jetbrains.annotations.NotNull;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
 public class VersionToolWindowFactory implements ToolWindowFactory {
+
     private static VersionToolWindowFactory instance;
 
     private VersionToolWindowFactory() {
 
     }
-
     public static VersionToolWindowFactory getInstance(Project project) {
         if (instance == null) {
             instance = new VersionToolWindowFactory();
         }
         return instance;
     }
+
 
     private JPanel historyWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
         JPanel panel = new JPanel();
@@ -58,7 +67,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                     JOptionPane.showMessageDialog(panel, "没有新的版本需要推送!", "推送失败", JOptionPane.CLOSED_OPTION);
                     return;
                 }
-
+                //int latestMinorVersion = VersionStorage.getProjectVersions().size() - 1;
                 // 更新大版本号映射表
                 VersionStorage.majorToMinorVersionMap.put(VersionStorage.majorToMinorVersionMap.size() + 1, latestMinorVersion);
                 // 将版本数据写入版本映射文件
@@ -67,7 +76,6 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 //
                 // 操作
                 //
-
                 JOptionPane.showMessageDialog(panel, "已成功推送到Git!", "推送成功", JOptionPane.CLOSED_OPTION);
 
                 // 清空当前面板内容并重新加载历史版本列表
@@ -126,8 +134,36 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 // 暂时关闭文件系统监听器和文档监听器
                 pauseAllListeners(project);
 
-                // 保存现在所有编辑器中的文件到磁盘
-                FileDocumentManager.getInstance().saveAllDocuments();
+                // 保存所有编辑器中的文件
+                FileEditorManager editorManager = FileEditorManager.getInstance(project);
+                FileEditor[] editors =  editorManager.getAllEditors();
+
+                for (FileEditor editor : editors) {
+                    VirtualFile file = editor.getFile();
+                    if (file != null && file.isValid()) {
+                        // 获取与该文件关联的 Document
+                        Document document = FileDocumentManager.getInstance().getDocument(file);
+                        if (document != null) {
+                            // 在写入命令中保存文档内容
+                            WriteCommandAction.runWriteCommandAction(project, () -> {
+                                try {
+                                    // 将文档内容写入文件
+                                    file.setBinaryContent(document.getText().getBytes());
+                                    file.refresh(false, false); // 刷新文件系统，确保文件更新
+                                } catch (Exception e4) {
+                                    e4.printStackTrace(); // 处理异常
+                                }
+                            });
+                        }
+                    }
+                }
+
+                // 将vfs虚拟文件系统中的所有文件保存到磁盘
+                try {
+                    project.getBaseDir().refresh(false, true);
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
 
                 // 清空autoversion.record.bin文件(写入空列表)
                 VersionStorage.clearVersions();
@@ -139,11 +175,13 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 Map<String, FileChange> fileChanges = new HashMap<>();
                 Path projectRoot = Paths.get(project.getBasePath());
 
-                // 使用 Files.walk 递归遍历项目目录及其子目录中的所有文件，除了 autoversion.record.bin 文件和 autoversion.map.bin 文件，以及gitignore、gitattributes和.git文件夹下的文件
+                // 使用 Files.walk 递归遍历项目目录及其子目录中的所有文件
                 try {
                     Files.walk(projectRoot).forEach(path -> {
                         File file = path.toFile();
+                        //**************************修改patch
                         String fileName = file.getName();
+
 
                         // 排除不需要的文件
                         if (!fileName.equals("autoversion.record.bin") &&
@@ -156,14 +194,21 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                                     String filePath = file.getCanonicalPath();
                                     // 替换所有的反斜杠为正斜杠
                                     filePath = filePath.replace("\\", "/");
-                                    // 将文件的路径和 FileChange 实例放入 map, 保存文件内容
-                                    String fileContent = new String(Files.readAllBytes(path)); // 读取文件内容
-                                    fileChanges.put(filePath, new FileChange(filePath, fileContent, FileChange.ChangeType.ADD));
+                                    List<String> emptyList = Collections.emptyList();
+                                    System.out.println("emptyList size: " + emptyList.size());
+                                    List<String> Filecontent = Files.readAllLines(Paths.get(filePath));//--------------------------------------------------需要修改----------------------------
+                                    System.out.println("Filecontent///////////////////////////////////////////////////////////\n " + Filecontent);
+                                    Patch<String> patch = DiffUtils.diff(emptyList, Filecontent);
+                                    System.out.println("\nPatch :***************************************************\n " + patch.toString());
+                                    fileChanges.put(filePath, new FileChange(filePath, patch, FileChange.ChangeType.ADD));//---
                                 } catch (IOException e2) {
                                     e2.printStackTrace();
                                 }
                             }
                         }
+
+                        //**************************
+
                     });
                 } catch (IOException e3) {
                     throw new RuntimeException(e3);
@@ -226,8 +271,10 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
     }
 
     // 显示选中的版本的文件及其内容
-    private void showVersionDetails(JPanel panel, int versionIndex, Project project, ToolWindow toolWindow) {
+    private void showVersionDetails(JPanel panel, int versionIndex, Project project, ToolWindow toolWindow){
         Map<String, FileChange> versionContents = VersionStorage.getVersion(versionIndex);
+
+        //**************************大小版本
         // 找到当前小版本对应的大版本和小版本
         int majorVersion = 0;
         int minorVersion = 0;
@@ -242,9 +289,11 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 break;
             }
         }
+        //**************************大小版本
 
         panel.removeAll(); // 清除旧内容
 
+        System.out.println("***************************************************************************************************************\n");
         JTextArea textArea = new JTextArea(20, 50);
         textArea.append("历史版本: Version " + majorVersion + "." + minorVersion + " 的内容是:\n\n");
         for (Map.Entry<String, FileChange> entry : versionContents.entrySet()) {
@@ -252,8 +301,14 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
             textArea.append("----------------------------------------------\n");
             textArea.append("文件: " + fileChange.getFilePath() + "\n");
             textArea.append("操作: " + fileChange.getChangeType() + "\n");
-            textArea.append("内容:\n\n[===文件开始===]\n" + (fileChange.getFileContent() == null ? "[文件无内容]" : fileChange.getFileContent()) + "\n[===文件结束===]\n\n");
+            textArea.append("内容:\n\n[===文件开始===]\n" +  fileChange.getFileContent(versionIndex)+ "\n[===文件结束===]\n\n");//-----------------------------------------------------------------------------------
+//            System.out.println("----------------------------------------------\n");
+//            System.out.println("文件: " + fileChange.getFilePath() + "\n");
+//            System.out.println("操作: " + fileChange.getChangeType() + "\n");
+//            System.out.println("内容:\n\n[===文件开始===]\n" + (fileChange.getEachFilePatch().toString() == null ? "[文件无内容]" : fileChange.getEachFilePatch().toString()) + "\n[===文件结束===]\n\n");//--------------------------------------------------
         }
+
+
 
         // 添加“返回”按钮
         JButton backButton = new JButton("◀ 返回版本历史列表");
@@ -265,9 +320,17 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
 
         // 添加“恢复版本”按钮
         JButton restoreButton = new JButton("↑ 回滚到此版本");
+
+
+        //**************************大小版本
         int finalMajorVersion = majorVersion;
         int finalMinorVersion = minorVersion;
+        //**************************大小版本
+
+
         restoreButton.addActionListener(e -> {
+
+
             // 显示确认对话框，包含大版本和小版本信息
             int confirm = JOptionPane.showConfirmDialog(panel,
                     "确定要回滚到 Version " + finalMajorVersion + "." + finalMinorVersion + " 版本吗?\n这将丢弃当前的工作,\n同时丢弃回滚目标后面的版本!",
@@ -276,18 +339,23 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 // 暂时关闭文件系统监听器和文档监听器
                 pauseAllListeners(project);
 
+                //*********************************************************新增
                 // 关闭所有打开的编辑器
                 FileEditorManager editorManager = FileEditorManager.getInstance(project);
                 FileEditor[] editors =  editorManager.getAllEditors();
                 for (FileEditor editor : editors) {
                     editorManager.closeFile(editor.getFile());
                 }
+                //*********************************************************新增
+
 
                 System.out.println("回滚到 Version " + (versionIndex + 1) + " 版本");
                 // 首先从根目录递归检索删除当前项目中的文件，然后依照版本从前到后逐步恢复选中版本的文件，可以避免留下当前版本中存在但回滚目标版本中不存在的文件
                 try {
                     Files.walk(Paths.get(project.getBasePath())).forEach(path -> {
                         File file = path.toFile();
+
+                        //*******************************************************
                         String fileName = file.getName();
 
                         // 排除不需要删除的文件
@@ -302,6 +370,9 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                                 e2.printStackTrace();
                             }
                         }
+                        //*******************************************************已修改
+
+
                     });
                 } catch (IOException e3) {
                     throw new RuntimeException(e3);
@@ -321,7 +392,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                                 VersionStorage.deleteFile(filePath);
                                 break;
                             case ADD, MODIFY:
-                                VersionStorage.restoreFileToDirectory(filePath, fileChange.getFileContent());
+                                VersionStorage.restoreFileToDirectory(filePath, fileChange.getFileContent(versionIndex));
                                 break;
                         }
                     }
@@ -352,6 +423,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 // 从磁盘刷新一下项目目录
                 project.getBaseDir().refresh(false, true);
 
+
                 // 清空当前面板内容并重新加载历史版本列表
                 panel.removeAll(); // 清空面板
                 panel.add(historyWindowContent(project, toolWindow)); // 显示历史版本列表
@@ -359,6 +431,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 // 重新绘制面板
                 panel.revalidate(); // 通知 Swing 重新布局
                 panel.repaint(); // 重新绘制面板
+
 
                 // 重新启用文件系统监听器和文档监听器
                 enableAllListeners(project);
