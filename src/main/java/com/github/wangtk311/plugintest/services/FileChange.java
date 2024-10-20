@@ -116,8 +116,6 @@ public class FileChange implements Serializable {  // 实现 Serializable 接口
             System.out.println("Patch " + (i + 1) + ":");
             printPatchDetails(patch);
             System.out.println("-----------------------------");
-        }
-        for (Patch<String> patch : patches) {
             try {
                 //System.out.println("Applying patch:\n" + patch);
                 // 应用每个补丁并更新 currentContent
@@ -129,9 +127,22 @@ public class FileChange implements Serializable {  // 实现 Serializable 接口
                 break;  // 如果应用失败，可以选择中断或继续处理其他补丁
             }
         }
+//        for (Patch<String> patch : patches) {
+//            try {
+//                //System.out.println("Applying patch:\n" + patch);
+//                // 应用每个补丁并更新 currentContent
+//                currentContent = patch.applyTo(currentContent);
+//                System.out.println("currentContent---------------------------:\n" + currentContent);
+//            } catch (PatchFailedException e) {
+//                System.err.println("Patch failed to apply: " + e.getMessage());
+//                e.printStackTrace();
+//                break;  // 如果应用失败，可以选择中断或继续处理其他补丁
+//            }
+//        }
 
         return currentContent;
     }
+
     public String getFileContent(int end)  {
         System.out.println("getFileContent---filePath: \n" + filePath);
         List<Patch<String>> patches = getEachFilePatches(getProjectVersions(), filePath,end);
@@ -141,6 +152,7 @@ public class FileChange implements Serializable {  // 实现 Serializable 接口
         //System.out.println("getFileContent---patches: \n" + patches);
         List<String> fileContent = applyPatches(patches);
         String FileContent = String.join("\n", fileContent);
+        System.out.println("getFileContent---FileContent: \n" + FileContent);
 
         return FileContent;
     }
