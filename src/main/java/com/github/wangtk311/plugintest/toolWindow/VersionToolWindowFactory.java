@@ -8,9 +8,14 @@ import com.github.wangtk311.plugintest.listeners.FileSystemListener;
 import com.github.wangtk311.plugintest.services.FileChange;
 import com.github.wangtk311.plugintest.services.VersionStorage;
 import com.github.wangtk311.plugintest.listeners.DocumentListener;
+import com.intellij.openapi.command.WriteCommandAction;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.ui.components.JBList;
@@ -128,6 +133,37 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
             if (confirm == JOptionPane.YES_OPTION) {
                 // 暂时关闭文件系统监听器和文档监听器
                 pauseAllListeners(project);
+
+                // 保存所有编辑器中的文件
+                FileEditorManager editorManager = FileEditorManager.getInstance(project);
+                FileEditor[] editors =  editorManager.getAllEditors();
+
+                for (FileEditor editor : editors) {
+                    VirtualFile file = editor.getFile();
+                    if (file != null && file.isValid()) {
+                        // 获取与该文件关联的 Document
+                        Document document = FileDocumentManager.getInstance().getDocument(file);
+                        if (document != null) {
+                            // 在写入命令中保存文档内容
+                            WriteCommandAction.runWriteCommandAction(project, () -> {
+                                try {
+                                    // 将文档内容写入文件
+                                    file.setBinaryContent(document.getText().getBytes());
+                                    file.refresh(false, false); // 刷新文件系统，确保文件更新
+                                } catch (Exception e4) {
+                                    e4.printStackTrace(); // 处理异常
+                                }
+                            });
+                        }
+                    }
+                }
+
+                // 将vfs虚拟文件系统中的所有文件保存到磁盘
+                try {
+                    project.getBaseDir().refresh(false, true);
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
 
                 // 清空autoversion.record.bin文件(写入空列表)
                 VersionStorage.clearVersions();

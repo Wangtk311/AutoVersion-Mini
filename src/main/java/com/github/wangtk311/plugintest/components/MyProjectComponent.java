@@ -9,6 +9,7 @@ import com.github.wangtk311.plugintest.services.FileChange;
 import com.github.wangtk311.plugintest.services.VersionStorage;
 import com.github.wangtk311.plugintest.toolWindow.VersionToolWindowFactory;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.components.ProjectComponent;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.event.EditorFactoryEvent;
@@ -20,19 +21,19 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class MyProjectComponent implements ProjectComponent {
     private final Project project;
@@ -84,14 +85,22 @@ public class MyProjectComponent implements ProjectComponent {
                             System.err.println("git init failed with exit code: " + exitCode);
                         }
 
+                        // 从磁盘刷新一下项目目录
+                        project.getBaseDir().refresh(false, true);
+
                         // 在主线程中执行 write action
                         ApplicationManager.getApplication().invokeAndWait(() -> {
                             ApplicationManager.getApplication().runWriteAction(() -> {
                                 try {
+                                    // 刷新虚拟文件系统，但在新线程中执行，避免占用EDT，等待刷新完成再继续
+                                    VirtualFileManager.getInstance().asyncRefresh(() -> {
+                                        System.out.println("Virtual File System refreshed.");
+                                    });
+
                                     // 尝试获取并创建 .gitignore 文件
                                     VirtualFile gitIgnore = project.getBaseDir().findChild(".gitignore");
                                     String toAppend = "\nautoversion.record.bin\nautoversion.map.bin\n";
-                                    String existingContent = "";
+                                    String existingContent;
 
                                     if (gitIgnore != null && gitIgnore.isValid()) {
                                         // 如果文件已存在，读取其内容
@@ -99,30 +108,24 @@ public class MyProjectComponent implements ProjectComponent {
                                         System.out.println("Exist .gitignore:");
                                         System.out.println(gitIgnore.getPath());
                                         System.out.println(existingContent);
-                                    } else {
-                                        // 在项目根目录创建新的 .gitignore 文件，不使用 VirtualFile 的 createChildData 方法
-                                        File newGitIgnore = new File(project.getBasePath().replace("\\", "/") + "/.gitignore");
-                                        Files.createFile(newGitIgnore.toPath());
-                                        gitIgnore = project.getBaseDir().findChild(".gitignore");
 
-                                        System.out.println("Create new .gitignore file");
-                                        if (gitIgnore != null) {
-                                            System.out.println("New .gitignore:");
-                                            System.out.println(gitIgnore.getPath());
+                                        if (!existingContent.contains("autoversion.record.bin") || !existingContent.contains("autoversion.map.bin")) {
+                                            // 写入内容
+                                            Files.write(Paths.get(gitIgnore.getPath().replace("\\", "/")),
+                                                    toAppend.getBytes(),
+                                                    StandardOpenOption.APPEND);
+                                            System.out.println("Appended to .gitignore.");
                                         } else {
-                                            System.err.println("Failed to create .gitignore file");
+                                            System.out.println("gitignore contains autoversion.record.bin and autoversion.map.bin, skip adding.");
                                         }
-                                    }
-
-                                    // 检查 .gitignore 中是否已包含要添加的文件
-                                    if (!existingContent.contains("autoversion.record.bin") || !existingContent.contains("autoversion.map.bin")) {
-                                        // 写入内容
-                                        Files.write(Paths.get(gitIgnore.getPath().replace("\\", "/")),
-                                                toAppend.getBytes(),
-                                                StandardOpenOption.APPEND);
-                                        System.out.println("Appended to .gitignore.");
                                     } else {
-                                        System.out.println("gitignore contains autoversion.record.bin and autoversion.map.bin, skip adding.");
+                                        if (gitIgnore != null) {
+                                            // 如果文件无效，在磁盘上删除
+                                            gitIgnore.delete(this);
+                                        }
+                                        // 创建新的 .gitignore 文件
+                                        System.out.println("Created .gitignore.");
+                                        createGitIgnore(project);
                                     }
                                 } catch (IOException e) {
                                     e.printStackTrace(); // 更好地处理异常
@@ -187,7 +190,7 @@ public class MyProjectComponent implements ProjectComponent {
             Map<String, FileChange> fileChanges = new HashMap<>();
             Path projectRoot = Paths.get(project.getBasePath());
 
-//******************************************************************
+        //******************************************************************
             // 递归遍历项目目录中的文件
             try {
                 Files.walk(projectRoot).forEach(path -> {
@@ -242,10 +245,15 @@ public class MyProjectComponent implements ProjectComponent {
                     }
                 }
             }
-//************************************************
+        //************************************************
         }, project);
 
         System.out.println("Plugin initialized.");
+        // 刷新虚拟文件系统
+        VirtualFileManager.getInstance().asyncRefresh(() -> {
+            System.out.println("Virtual File System refreshed.");
+        });
+
         refreshToolWindow();
     }
 
@@ -272,6 +280,34 @@ public class MyProjectComponent implements ProjectComponent {
     }
     //****************************************************************************************************
 
+    private void createGitIgnore(Project project) {
+        AtomicReference<VirtualFile> gitIgnore = new AtomicReference<>();
+        try {
+            // 使用 WriteCommandAction 保证写入安全
+            WriteCommandAction.runWriteCommandAction(project, () -> {
+                try {
+                    VirtualFile baseDir = project.getBaseDir();
+                    // 创建 .gitignore 文件
+                    gitIgnore.set(baseDir.findOrCreateChildData(this, ".gitignore"));
+
+                    // 添加内容到 .gitignore 文件
+                    String content = "\nautoversion.record.bin\nautoversion.map.bin\n";
+                    gitIgnore.get().setBinaryContent(content.getBytes());
+
+                    // 刷新 VirtualFile 系统，确保写入到磁盘
+                    gitIgnore.get().refresh(false, false);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+
+            // 刷新项目目录，确保 IntelliJ IDEA 能够检测到新的文件
+            VirtualFileManager.getInstance().syncRefresh();
+            System.out.println("Created .gitignore in project root.");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
 
 }
