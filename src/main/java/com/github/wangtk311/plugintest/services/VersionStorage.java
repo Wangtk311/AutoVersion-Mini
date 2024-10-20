@@ -33,6 +33,10 @@ public class VersionStorage {
     // 保存当前项目的文件变化，并保存到磁盘
     public static void saveVersion(Map<String, FileChange> fileChanges) {
         projectVersions.add(new HashMap<>(fileChanges)); // 保存文件变化的副本
+        fileChanges.values().forEach(fileChange -> {
+            System.out.println("fileChange.getEachFilePatch()-------------:"+fileChange.getEachFilePatch());
+
+        });
         saveVersionsToDisk(); // 保存到磁盘
     }
 

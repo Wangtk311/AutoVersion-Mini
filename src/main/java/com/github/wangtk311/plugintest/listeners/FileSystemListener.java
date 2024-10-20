@@ -1,5 +1,6 @@
 package com.github.wangtk311.plugintest.listeners;
 
+import com.github.difflib.patch.Patch;
 import com.github.wangtk311.plugintest.services.FileChange;
 import com.github.wangtk311.plugintest.services.VersionStorage;
 import com.github.wangtk311.plugintest.toolWindow.VersionToolWindowFactory;
@@ -114,8 +115,10 @@ public class FileSystemListener extends VirtualFileAdapter {
         }
         try {
             // 获取文件内容
-            String fileContent = new String(file.contentsToByteArray());
-            FileChange fileChange = new FileChange(file.getPath(), fileContent, FileChange.ChangeType.ADD);
+            String fileContent = new String(file.contentsToByteArray());//-----------------------------------------------------------------------------------------------------------------------------------
+            Patch<String> emptyPatch = new Patch<>();
+
+            FileChange fileChange = new FileChange(file.getPath(), emptyPatch, FileChange.ChangeType.ADD);//------------------------------------------------------------------------------------------------------------------------------------------
             VersionStorage.saveVersion(Map.of(file.getPath(), fileChange)); // 保存版本
             refreshToolWindow(); // 刷新 ToolWindow
         } catch (IOException e) {
@@ -127,7 +130,8 @@ public class FileSystemListener extends VirtualFileAdapter {
         if (file.isDirectory()) {
             return;
         }
-        FileChange fileChange = new FileChange(file.getPath(), "", FileChange.ChangeType.DELETE);
+        Patch<String> emptyPatch = new Patch<>();
+        FileChange fileChange = new FileChange(file.getPath(), emptyPatch, FileChange.ChangeType.DELETE);//---------------------------------------------------------------------------------------------------------------------------------------
         VersionStorage.saveVersion(Map.of(file.getPath(), fileChange)); // 保存版本
         refreshToolWindow(); // 刷新 ToolWindow
     }
