@@ -85,6 +85,11 @@ public class MyProjectComponent implements ProjectComponent {
                             System.err.println("git init failed with exit code: " + exitCode);
                         }
 
+                        initProcessBuilder = new ProcessBuilder("git", "checkout", "-b", "main");
+                        initProcessBuilder.directory(new File(project.getBasePath().replace("\\", "/")));
+                        Process initProcess2 = initProcessBuilder.start();
+                        initProcess2.waitFor();
+
                         // 从磁盘刷新一下项目目录
                         project.getBaseDir().refresh(false, true);
 

@@ -62,20 +62,153 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 int latestMinorVersion = VersionStorage.getProjectVersions().size() - 1;
                 // 获取最新的大版本号
                 int latestMajorVersion = VersionStorage.majorToMinorVersionMap.size();
-                // 如果最新大版本号后面没有小版本，不进行推送
+                // 如果最新大版本号后面没有小版本，说明已经推送过，不进行推送
                 if (latestMinorVersion == VersionStorage.majorToMinorVersionMap.get(latestMajorVersion)) {
                     JOptionPane.showMessageDialog(panel, "没有新的版本需要推送!", "推送失败", JOptionPane.CLOSED_OPTION);
                     return;
                 }
-                //int latestMinorVersion = VersionStorage.getProjectVersions().size() - 1;
+
                 // 更新大版本号映射表
                 VersionStorage.majorToMinorVersionMap.put(VersionStorage.majorToMinorVersionMap.size() + 1, latestMinorVersion);
                 // 将版本数据写入版本映射文件
                 VersionStorage.saveMapToDisk();
 
+                // 更新latestMajorVersion
+                latestMajorVersion = latestMajorVersion + 1;
+
                 //
-                // 操作
+                // 推送操作开始
                 //
+
+                // 暂时关闭文件系统监听器和文档监听器
+                pauseAllListeners(project);
+
+                // 获取上一个大版本号及对应的小版本号
+                int lastMajorVersion = VersionStorage.majorToMinorVersionMap.size() - 1; // 上一个大版本号
+                int lastMinorVersion = VersionStorage.majorToMinorVersionMap.get(lastMajorVersion); // 上一个小版本号
+
+                // 首先切换到主分支
+                ProcessBuilder processBuilder1 = new ProcessBuilder("git", "checkout", "main");
+                processBuilder1.directory(new File(project.getBasePath()));
+                try {
+                    Process process = processBuilder1.start();
+                    process.waitFor();
+                } catch (IOException | InterruptedException e1) {
+                    e1.printStackTrace();
+                }
+
+                // 从上一次commit的小版本号开始，逐个commit到最新的小版本号，首先使用git branch **从当前创建新的分支，如果新的大版本为x.0，则命名此小版本分支为Vx-1，例如新提交的大版本为2.0，则命名分支为V1分支
+                String branchName = "V" + lastMajorVersion;
+                ProcessBuilder processBuilder2 = new ProcessBuilder("git", "checkout", "-b", branchName);
+
+                // 设置工作目录
+                processBuilder2.directory(new File(project.getBasePath()));
+                try {
+                    Process process = processBuilder2.start();
+                    process.waitFor();
+                } catch (IOException | InterruptedException e1) {
+                    e1.printStackTrace();
+                }
+
+                // 从上一次commit的小版本号开始，逐个commit到最新的小版本号
+                for (int i = lastMinorVersion + 1; i <= latestMinorVersion; i++) {
+                    // 回滚到当前小版本
+                    try {
+                        Files.walk(Paths.get(project.getBasePath())).forEach(path -> {
+                            File file = path.toFile();
+
+                            String fileName = file.getName();
+
+                            // 排除不需要删除的文件
+                            if (file.isFile() && !fileName.equals("autoversion.record.bin") &&
+                                    !fileName.equals("autoversion.map.bin") &&
+                                    !fileName.equals(".gitignore") &&
+                                    !fileName.equals(".gitattributes") &&
+                                    !filePathContainsGitFolder(path)) {
+                                try {
+                                    Files.deleteIfExists(path); // 删除文件
+                                } catch (IOException e2) {
+                                    e2.printStackTrace();
+                                }
+                            }
+                        });
+                    } catch (IOException e3) {
+                        throw new RuntimeException(e3);
+                    }
+
+                    Map<String, FileChange> versionFiles;
+
+                    // 从第一个版本开始恢复到选中的版本
+                    for (int j = 0; j <= i; j++){
+                        versionFiles = VersionStorage.getVersion(j);
+                        for (Map.Entry<String, FileChange> entry : versionFiles.entrySet()) {
+                            FileChange fileChange = entry.getValue();
+                            String filePath = fileChange.getFilePath();
+                            switch (fileChange.getChangeType()) {
+                                case DELETE:
+                                    VersionStorage.deleteFile(filePath);
+                                    break;
+                                case ADD, MODIFY:
+                                    VersionStorage.restoreFileToDirectory(filePath, fileChange.getFileContent(j));
+                                    break;
+                            }
+                        }
+                    }
+
+                    // 提交当前小版本到Vx-1分支
+                    ProcessBuilder processBuilder3 = new ProcessBuilder("git", "add", ".");
+                    processBuilder3.directory(new File(project.getBasePath()));
+                    try {
+                        Process process = processBuilder3.start();
+                        process.waitFor();
+                    } catch (IOException | InterruptedException e1) {
+                        e1.printStackTrace();
+                    }
+
+                    ProcessBuilder processBuilder4 = new ProcessBuilder("git", "commit", "-m\"" + "V" + lastMajorVersion + "." + (i - lastMinorVersion) + "\"");
+                    processBuilder4.directory(new File(project.getBasePath()));
+                    try {
+                        Process process = processBuilder4.start();
+                        process.waitFor();
+                        System.out.println("Commit V" + lastMajorVersion + "." + (i - lastMinorVersion) + " to branch " + branchName);
+                    } catch (IOException | InterruptedException e1) {
+                        e1.printStackTrace();
+                    }
+                }
+
+                // 切换到主分支
+                ProcessBuilder processBuilder5 = new ProcessBuilder("git", "checkout", "main");
+                processBuilder5.directory(new File(project.getBasePath()));
+                try {
+                    Process process = processBuilder5.start();
+                    process.waitFor();
+                    System.out.println("Switch to main branch");
+                } catch (IOException | InterruptedException e1) {
+                    e1.printStackTrace();
+                }
+
+                // 合并Vx-1分支到主分支
+                ProcessBuilder processBuilder6 = new ProcessBuilder("git", "merge", branchName, "--no-ff", "-m", "V" + latestMajorVersion + ".0");
+                processBuilder6.directory(new File(project.getBasePath()));
+                try {
+                    Process process = processBuilder6.start();
+                    process.waitFor();
+                    System.out.println("Merge branch " + branchName + " to main branch");
+                    System.out.println("Commit: V" + latestMajorVersion + ".0" + " to main branch");
+                } catch (IOException | InterruptedException e1) {
+                    e1.printStackTrace();
+                }
+
+                // 刷新文件系统
+                project.getBaseDir().refresh(false, true);
+
+                // 重启文件系统监听器和文档监听器
+                enableAllListeners(project);
+
+                //
+                // 推送操作结束
+                //
+
                 JOptionPane.showMessageDialog(panel, "已成功推送到Git!", "推送成功", JOptionPane.CLOSED_OPTION);
 
                 // 清空当前面板内容并重新加载历史版本列表
