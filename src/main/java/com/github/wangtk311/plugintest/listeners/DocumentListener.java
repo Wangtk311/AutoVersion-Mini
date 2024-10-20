@@ -5,6 +5,7 @@ import com.github.difflib.patch.PatchFailedException;
 import com.github.wangtk311.plugintest.services.FileChange;
 import com.github.wangtk311.plugintest.services.VersionStorage;
 import com.github.wangtk311.plugintest.toolWindow.VersionToolWindowFactory;
+import com.intellij.notification.impl.ui.StickyButton;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.Document;
@@ -34,20 +35,30 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
     private static final long DELAY = 3000; // 延迟时间（毫秒）
 
     private String oldFilecontent = "";
-    private  int i=1;
     private boolean first = true;
+
+    private String tracingFilePath ;
 
     //**************************************
     private Document tracingDocument;
 //**************************************
 
     //**************************************
-    public DocumentListener(Project project, Document document) {
+    public DocumentListener(Project project, Document document,VirtualFile file) {
         this.project = project;
         this.tracingDocument = document;
+
+        if (file != null) {
+            tracingFilePath = file.getPath();
+        }
+
         enableListening();
     }
 //**************************************
+
+    public String getTracingFilePath() {
+        return tracingFilePath;
+    }
 
 
     //**************************************
@@ -56,6 +67,34 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
     }
     //**************************************
 
+    public  void getOldfileContentFirst(String filePath){
+        System.out.println("Find last version.");
+        // 找到最后一个包含当前追踪文件变动且不是DELETE的版本
+        for (int i = 0; i < VersionStorage.getProjectVersions().size(); i++) {
+            Map<String, FileChange> version = VersionStorage.getProjectVersions().get(i);
+            if (version.containsKey(filePath) && version.get(filePath).getChangeType() != FileChange.ChangeType.DELETE) {
+                versionIndex = i;
+            }
+        }
+        System.out.println("versionIndex: " + versionIndex);
+
+        Map<String, FileChange> versionContents = VersionStorage.getVersion(versionIndex);
+        System.out.println("versionContents: " + versionContents);
+        // 打印当前版本的所有文件路径
+        for (String key : versionContents.keySet()) {
+            System.out.println("Version file paths: " + key);
+        }
+        FileChange filechange = versionContents.get(filePath);
+        // 打印当前版本的文件内容
+        System.out.println("filechange: " + filechange);
+        String filecontent = filechange.getFileContent(versionIndex);
+        // 打印当前版本的文件内容
+        System.out.println("oldfilecontent: " + filecontent);
+        // 写入oldFilecontent
+        oldFilecontent = filecontent;
+
+
+    }
 
     @Override
     public void documentChanged(@NotNull DocumentEvent event) {
@@ -83,31 +122,7 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         //null是否要返回
         String filePath = getCurrentFilePath(currentFile);
         if (first) {
-            System.out.println("Find last version.");
-            // 找到最后一个包含当前追踪文件变动且不是DELETE的版本
-            for (int i = 0; i < VersionStorage.getProjectVersions().size(); i++) {
-                Map<String, FileChange> version = VersionStorage.getProjectVersions().get(i);
-                if (version.containsKey(filePath) && version.get(filePath).getChangeType() != FileChange.ChangeType.DELETE) {
-                    versionIndex = i;
-                }
-            }
-            System.out.println("versionIndex: " + versionIndex);
-
-            Map<String, FileChange> versionContents = VersionStorage.getVersion(versionIndex);
-            System.out.println("versionContents: " + versionContents);
-            // 打印当前版本的所有文件路径
-            for (String key : versionContents.keySet()) {
-                System.out.println("Version file paths: " + key);
-            }
-            FileChange filechange = versionContents.get(filePath);
-            // 打印当前版本的文件内容
-            System.out.println("filechange: " + filechange);
-            String filecontent = filechange.getFileContent(versionIndex);
-            // 打印当前版本的文件内容
-            System.out.println("oldfilecontent: " + filecontent);
-            // 写入oldFilecontent
-            oldFilecontent = filecontent;
-
+            getOldfileContentFirst(filePath);
             first = false;
         }
 
