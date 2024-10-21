@@ -180,6 +180,20 @@ public class MyProjectComponent implements ProjectComponent {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+        ProcessBuilder checkoutProcessBuilder2 = new ProcessBuilder("git", "checkout", "main");//应该-b
+        checkoutProcessBuilder2.directory(new File(project.getBasePath().replace("\\", "/")));
+        Process initProcess22;
+        try {
+            initProcess22 = checkoutProcessBuilder2.start();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        try {
+            initProcess22.waitFor();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
         //----------------------------------------------------final新增---------------------------------
 
 

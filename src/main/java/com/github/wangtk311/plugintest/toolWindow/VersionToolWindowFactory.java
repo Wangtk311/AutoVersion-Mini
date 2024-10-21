@@ -482,16 +482,18 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 // 从磁盘刷新一下项目目录
                 project.getBaseDir().refresh(false, true);
 
-                // 对每一个listener都应用getOldfileContentFirst(filePath);
-                for (DocumentListener listener : MyProjectComponent.getInstance(project).documentListeners){
-                    listener.getOldfileContentFirst(listener.getTracingFilePath());
-                }
 
                 //--------------------------------------------------------------git init and git commit first version-------------------------------------
 
                 gitInit(project);
 
                 //--------------------------------------------------------------
+
+                // 对每一个listener都应用getOldfileContentFirst(filePath);
+                for (DocumentListener listener : MyProjectComponent.getInstance(project).documentListeners){
+                    listener.getOldfileContentFirst(listener.getTracingFilePath());
+                }
+
 
                 // 重新启用文件系统监听器和文档监听器
                 enableAllListeners(project);
@@ -834,11 +836,8 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 }
 
                 // 丢弃回滚目标后面的大版本
-                for (int major : VersionStorage.majorToMinorVersionMap.keySet()) {
-                    int startMinorVersion = VersionStorage.majorToMinorVersionMap.get(major);
-                    if (startMinorVersion > selectedVersion) {
-                        VersionStorage.majorToMinorVersionMap.remove(major);
-                    }
+                for (int i = VersionStorage.majorToMinorVersionMap.size(); i > finalMajorVersion; i--) {
+                    VersionStorage.majorToMinorVersionMap.remove(i);
                 }
 
                 // 丢弃回滚目标后面的小版本
