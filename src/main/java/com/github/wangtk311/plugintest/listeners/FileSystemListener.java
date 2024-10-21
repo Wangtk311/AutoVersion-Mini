@@ -33,6 +33,25 @@ public class FileSystemListener extends VirtualFileAdapter {
         startListening();
     }
 
+    public static void deleteDirectory(Path path) {
+        if (Files.isDirectory(path)) {
+            try {
+                Files.list(path).forEach(p -> {
+                    deleteDirectory(p);
+                });
+                Files.deleteIfExists(path);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            try {
+                Files.deleteIfExists(path);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     public void startListening() {
         if (!isListening) {
             return;

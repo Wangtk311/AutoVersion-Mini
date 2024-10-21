@@ -158,7 +158,20 @@ public class MyProjectComponent implements ProjectComponent {
             System.out.println("Git repo initialized.");
         }
 
+        ProcessBuilder checkoutProcessBuilder = new ProcessBuilder("git", "checkout", "main");
+        checkoutProcessBuilder.directory(new File(project.getBasePath().replace("\\", "/")));
+        Process initProcess2;
+        try {
+            initProcess2 = checkoutProcessBuilder.start();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
+        try {
+            initProcess2.waitFor();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
 
 
         //***********************************************************************
