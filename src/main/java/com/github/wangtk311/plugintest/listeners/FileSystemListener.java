@@ -32,6 +32,26 @@ public class FileSystemListener extends VirtualFileAdapter {
         enableListening();
         startListening();
     }
+    //----------------------------------------------------final新增---------------------------------
+    public static void deleteDirectory(Path path) {
+        if (Files.isDirectory(path)) {
+            try {
+                Files.list(path).forEach(p -> {
+                    deleteDirectory(p);
+                });
+                Files.deleteIfExists(path);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            try {
+                Files.deleteIfExists(path);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    //----------------------------------------------------final新增---------------------------------
 
     public void startListening() {
         if (!isListening) {
@@ -126,7 +146,7 @@ public class FileSystemListener extends VirtualFileAdapter {
 
             List<String> emptyList = new ArrayList<>();
             System.out.println("emptyList size: " + emptyList.size());
-            List<String> Filecontent = Files.readAllLines(Paths.get(file.getPath()));//--------------------------------------------------需要修改----------------------------
+            List<String> Filecontent = Files.readAllLines(Paths.get(file.getPath()));//--------------------------------------------------
             System.out.println("Filecontent///////////////////////////////////////////////////////////\n " + Filecontent);
             Patch<String> patch ;
 

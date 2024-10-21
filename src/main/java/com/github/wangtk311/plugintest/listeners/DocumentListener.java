@@ -203,7 +203,12 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         if (newClasses.size() > oldClasses.size()) {
             return true;  // 新增类，记录变更
         }
-
+        //-----------------纯新增---------------------------------------------------------------------------！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+        // 检查是否有类的删除
+        if (newClasses.size() < oldClasses.size()) {
+            return true;  // 删除类，记录变更
+        }
+        //-----------------纯新增---------------------------------------------------------------------------！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
         for (ClassOrInterfaceDeclaration oldClass : oldClasses) {
 
             var NewClass = newClasses.stream()

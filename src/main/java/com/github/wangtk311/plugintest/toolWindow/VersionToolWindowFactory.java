@@ -77,9 +77,156 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 // 将版本数据写入版本映射文件
                 VersionStorage.saveMapToDisk();
 
+
+
+                //----------------------------------------------------final新增---------------------------------
+                // 更新latestMajorVersion
+                latestMajorVersion = latestMajorVersion + 1;
+                //----------------------------------------------------final新增---------------------------------
+
+
+
                 //
                 // 操作
                 //
+
+                //----------------------------------------------------final新增---------------------------------
+                //
+                // 推送操作开始
+                //
+
+                // 暂时关闭文件系统监听器和文档监听器
+                pauseAllListeners(project);
+
+                // 获取上一个大版本号及对应的小版本号
+                int lastMajorVersion = VersionStorage.majorToMinorVersionMap.size() - 1; // 上一个大版本号
+                int lastMinorVersion = VersionStorage.majorToMinorVersionMap.get(lastMajorVersion); // 上一个小版本号
+
+                // 首先切换到主分支
+                ProcessBuilder processBuilder1 = new ProcessBuilder("git", "checkout", "main");
+                processBuilder1.directory(new File(project.getBasePath()));
+                try {
+                    Process process = processBuilder1.start();
+                    process.waitFor();
+                } catch (IOException | InterruptedException e1) {
+                    e1.printStackTrace();
+                }
+
+                // 从上一次commit的小版本号开始，逐个commit到最新的小版本号，首先使用git branch **从当前创建新的分支，如果新的大版本为x.0，则命名此小版本分支为Vx-1，例如新提交的大版本为2.0，则命名分支为V1分支
+                String branchName = "V" + lastMajorVersion;
+                ProcessBuilder processBuilder2 = new ProcessBuilder("git", "checkout", "-b", branchName);
+
+                // 设置工作目录
+                processBuilder2.directory(new File(project.getBasePath()));
+                try {
+                    Process process = processBuilder2.start();
+                    process.waitFor();
+                } catch (IOException | InterruptedException e1) {
+                    e1.printStackTrace();
+                }
+
+                // 从上一次commit的小版本号开始，逐个commit到最新的小版本号
+                for (int i = lastMinorVersion + 1; i <= latestMinorVersion; i++) {
+                    // 回滚到当前小版本
+                    try {
+                        Files.walk(Paths.get(project.getBasePath())).forEach(path -> {
+                            File file = path.toFile();
+
+                            String fileName = file.getName();
+
+                            // 排除不需要删除的文件
+                            if (file.isFile() && !fileName.equals("autoversion.record.bin") &&
+                                    !fileName.equals("autoversion.map.bin") &&
+                                    !fileName.equals(".gitignore") &&
+                                    !fileName.equals(".gitattributes") &&
+                                    !filePathContainsGitFolder(path)) {
+                                try {
+                                    Files.deleteIfExists(path); // 删除文件
+                                } catch (IOException e2) {
+                                    e2.printStackTrace();
+                                }
+                            }
+                        });
+                    } catch (IOException e3) {
+                        throw new RuntimeException(e3);
+                    }
+
+                    Map<String, FileChange> versionFiles;
+
+                    // 从第一个版本开始恢复到选中的版本
+                    for (int j = 0; j <= i; j++){
+                        versionFiles = VersionStorage.getVersion(j);
+                        for (Map.Entry<String, FileChange> entry : versionFiles.entrySet()) {
+                            FileChange fileChange = entry.getValue();
+                            String filePath = fileChange.getFilePath();
+                            switch (fileChange.getChangeType()) {
+                                case DELETE:
+                                    VersionStorage.deleteFile(filePath);
+                                    break;
+                                case ADD, MODIFY:
+                                    VersionStorage.restoreFileToDirectory(filePath, fileChange.getFileContent(j));
+                                    break;
+                            }
+                        }
+                    }
+
+                    // 提交当前小版本到Vx-1分支
+                    ProcessBuilder processBuilder3 = new ProcessBuilder("git", "add", ".");
+                    processBuilder3.directory(new File(project.getBasePath()));
+                    try {
+                        Process process = processBuilder3.start();
+                        process.waitFor();
+                    } catch (IOException | InterruptedException e1) {
+                        e1.printStackTrace();
+                    }
+
+                    ProcessBuilder processBuilder4 = new ProcessBuilder("git", "commit", "-m\"" + "V" + lastMajorVersion + "." + (i - lastMinorVersion) + "\"");
+                    processBuilder4.directory(new File(project.getBasePath()));
+                    try {
+                        Process process = processBuilder4.start();
+                        process.waitFor();
+                        System.out.println("Commit V" + lastMajorVersion + "." + (i - lastMinorVersion) + " to branch " + branchName);
+                    } catch (IOException | InterruptedException e1) {
+                        e1.printStackTrace();
+                    }
+                }
+
+                // 切换到主分支
+                ProcessBuilder processBuilder5 = new ProcessBuilder("git", "checkout", "main");
+                processBuilder5.directory(new File(project.getBasePath()));
+                try {
+                    Process process = processBuilder5.start();
+                    process.waitFor();
+                    System.out.println("Switch to main branch");
+                } catch (IOException | InterruptedException e1) {
+                    e1.printStackTrace();
+                }
+
+                // 合并Vx-1分支到主分支
+                ProcessBuilder processBuilder6 = new ProcessBuilder("git", "merge", branchName, "--no-ff", "-m", "V" + latestMajorVersion + ".0");
+                processBuilder6.directory(new File(project.getBasePath()));
+                try {
+                    Process process = processBuilder6.start();
+                    process.waitFor();
+                    System.out.println("Merge branch " + branchName + " to main branch");
+                    System.out.println("Commit: V" + latestMajorVersion + ".0" + " to main branch");
+                } catch (IOException | InterruptedException e1) {
+                    e1.printStackTrace();
+                }
+
+                // 刷新文件系统
+                project.getBaseDir().refresh(false, true);
+
+                // 重启文件系统监听器和文档监听器
+                enableAllListeners(project);
+
+                //
+                // 推送操作结束
+                //
+
+                //----------------------------------------------------final新增---------------------------------
+
+
                 JOptionPane.showMessageDialog(panel, "已成功推送到Git!", "推送成功", JOptionPane.CLOSED_OPTION);
 
                 // 清空当前面板内容并重新加载历史版本列表
@@ -174,6 +321,108 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
 
                 // 清空版本映射表
                 VersionStorage.majorToMinorVersionMap.clear();
+
+                //----------------------------------------------------final新增---------------------------------
+//                // 初始化Git，删除原来的.git文件夹，并重新init，checkout到main分支，然后commit当前状态为V1.0
+//                // 删除原来的.git文件夹，但不删除.gitignore和.gitattributes文件
+//                try {
+//                    Files.walk(Paths.get(project.getBasePath())).forEach(path -> {
+//                        File file = path.toFile();
+//                        if (file.isDirectory() && file.getName().equals(".git")) {
+//                            FileSystemListener.deleteDirectory(path);
+//                        }
+//                    });
+//                } catch (IOException e3) {
+//                    throw new RuntimeException(e3);
+//                }
+//
+//                // 初始化Git
+//                ProcessBuilder processBuilder = new ProcessBuilder("git", "init");
+//                processBuilder.directory(new File(project.getBasePath()));
+//                try {
+//                    Process process = processBuilder.start();
+//                    process.waitFor();
+//                } catch (IOException | InterruptedException e1) {
+//                    e1.printStackTrace();
+//                }
+//
+//                // 切换到main分支
+//                ProcessBuilder processBuilder2 = new ProcessBuilder("git", "checkout", "-b", "main");
+//                processBuilder2.directory(new File(project.getBasePath()));
+//                try {
+//                    Process process = processBuilder2.start();
+//                    process.waitFor();
+//                } catch (IOException | InterruptedException e1) {
+//                    e1.printStackTrace();
+//                }
+//
+//                // 检查.gitignore文件是否存在，如果不存在则创建
+//                // 在主线程中执行 write action
+//                ApplicationManager.getApplication().invokeAndWait(() -> {
+//                    ApplicationManager.getApplication().runWriteAction(() -> {
+//                        try {
+//                            // 刷新虚拟文件系统，但在新线程中执行，避免占用EDT，等待刷新完成再继续
+//                            VirtualFileManager.getInstance().asyncRefresh(() -> {
+//                                System.out.println("Virtual File System refreshed.");
+//                            });
+//
+//                            // 尝试获取并创建 .gitignore 文件
+//                            VirtualFile gitIgnore = project.getBaseDir().findChild(".gitignore");
+//                            String toAppend = "\nautoversion.record.bin\nautoversion.map.bin\n";
+//                            String existingContent;
+//
+//                            if (gitIgnore != null && gitIgnore.isValid()) {
+//                                // 如果文件已存在，读取其内容
+//                                existingContent = new String(gitIgnore.contentsToByteArray());
+//                                System.out.println("Exist .gitignore:");
+//                                System.out.println(gitIgnore.getPath());
+//                                System.out.println(existingContent);
+//
+//                                if (!existingContent.contains("autoversion.record.bin") || !existingContent.contains("autoversion.map.bin")) {
+//                                    // 写入内容
+//                                    Files.write(Paths.get(gitIgnore.getPath().replace("\\", "/")),
+//                                            toAppend.getBytes(),
+//                                            StandardOpenOption.APPEND);
+//                                    System.out.println("Appended to .gitignore.");
+//                                } else {
+//                                    System.out.println("gitignore contains autoversion.record.bin and autoversion.map.bin, skip adding.");
+//                                }
+//                            } else {
+//                                if (gitIgnore != null) {
+//                                    // 如果文件无效，在磁盘上删除
+//                                    gitIgnore.delete(this);
+//                                }
+//                                // 创建新的 .gitignore 文件
+//                                System.out.println("Created .gitignore.");
+//                                createGitIgnore(project);
+//                            }
+//                        } catch (IOException e5) {
+//                            e5.printStackTrace(); // 更好地处理异常
+//                        }
+//                    });
+//                });
+//
+//                // 添加所有文件到git
+//                ProcessBuilder processBuilder3 = new ProcessBuilder("git", "add", ".");
+//                processBuilder3.directory(new File(project.getBasePath()));
+//                try {
+//                    Process process = processBuilder3.start();
+//                    process.waitFor();
+//                } catch (IOException | InterruptedException e1) {
+//                    e1.printStackTrace();
+//                }
+//
+//                // 提交当前状态到main分支
+//                ProcessBuilder processBuilder4 = new ProcessBuilder("git", "commit", "-m\"V1.0\"");
+//                processBuilder4.directory(new File(project.getBasePath()));
+//                try {
+//                    Process process = processBuilder4.start();
+//                    process.waitFor();
+//                    System.out.println("Commit V1.0 to main branch");
+//                } catch (IOException | InterruptedException e1) {
+//                    e1.printStackTrace();
+//                }
+                //----------------------------------------------------final新增---------------------------------
 
                 // 创建新的 fileChanges map 来保存当前项目状态
                 Map<String, FileChange> fileChanges = new HashMap<>();
@@ -279,6 +528,17 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
 
     public void gitInit(Project project) {
         try {
+            Files.walk(Paths.get(project.getBasePath())).forEach(path -> {
+                File file = path.toFile();
+                if (file.isDirectory() && file.getName().equals(".git")) {
+                    FileSystemListener.deleteDirectory(path);
+                }
+            });
+        } catch (IOException e3) {
+            throw new RuntimeException(e3);
+        }
+
+        try {
             // 执行 git init 命令并等待完成
             ProcessBuilder initProcessBuilder = new ProcessBuilder("git", "init");
             initProcessBuilder.directory(new File(project.getBasePath().replace("\\", "/")));
@@ -291,6 +551,13 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
             if(exitCode==0){
                 System.err.println("git init succeed with  code: " + exitCode + " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             }
+
+            //切换到主分支
+            ProcessBuilder checkoutProcessBuilder = new ProcessBuilder("git", "checkout", "-b", "main");
+            checkoutProcessBuilder.directory(new File(project.getBasePath().replace("\\", "/")));
+            Process checkoutProcess = checkoutProcessBuilder.start();
+            checkoutProcess.waitFor();
+
 
             // 从磁盘刷新一下项目目录
             project.getBaseDir().refresh(false, true);
@@ -341,11 +608,6 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 });
             });
 
-            //切换到主分支
-            ProcessBuilder checkoutProcessBuilder = new ProcessBuilder("git", "checkout", "-b", "main");
-            checkoutProcessBuilder.directory(new File(project.getBasePath().replace("\\", "/")));
-            Process checkoutProcess = checkoutProcessBuilder.start();
-            checkoutProcess.waitFor();
 
             // 添加和提交
             ProcessBuilder addProcessBuilder = new ProcessBuilder("git", "add", ".");
@@ -481,6 +743,45 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                     editorManager.closeFile(editor.getFile());
                 }
                 //*********************************************************新增
+
+                //----------------------------------------------------final新增---------------------------------
+                // 回滚Git信息
+                // 首先切换到主分支，然后逐个commit大版本回滚到VfinalMajorVersion.0
+                ProcessBuilder processBuilder1 = new ProcessBuilder("git", "checkout", "main");
+                processBuilder1.directory(new File(project.getBasePath()));
+                try {
+                    Process process = processBuilder1.start();
+                    process.waitFor();
+                } catch (IOException | InterruptedException e1) {
+                    e1.printStackTrace();
+                }
+
+                // 回滚main分支到VfinalMajorVersion.0
+                for (int i = VersionStorage.majorToMinorVersionMap.size(); i > finalMajorVersion; i--) {
+                    ProcessBuilder processBuilder2 = new ProcessBuilder("git", "reset", "--hard", "HEAD~1");
+                    processBuilder2.directory(new File(project.getBasePath()));
+                    try {
+                        Process process = processBuilder2.start();
+                        process.waitFor();
+                    } catch (IOException | InterruptedException e1) {
+                        e1.printStackTrace();
+                    }
+                }
+
+                // 删除回滚到的版本对应的大版本后面的所有Vx分支
+                for (int i = finalMajorVersion; i < VersionStorage.majorToMinorVersionMap.size(); i++) {
+                    ProcessBuilder processBuilder3 = new ProcessBuilder("git", "branch", "-D", "V" + i);
+                    processBuilder3.directory(new File(project.getBasePath()));
+                    try {
+                        Process process = processBuilder3.start();
+                        process.waitFor();
+                    } catch (IOException | InterruptedException e1) {
+                        e1.printStackTrace();
+                    }
+                }
+
+                //----------------------------------------------------final新增---------------------------------
+
 
 
                 System.out.println("回滚到 Version " + (versionIndex + 1) + " 版本");
