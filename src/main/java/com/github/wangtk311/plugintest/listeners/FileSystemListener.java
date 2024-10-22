@@ -32,7 +32,7 @@ public class FileSystemListener extends VirtualFileAdapter {
         enableListening();
         startListening();
     }
-    //----------------------------------------------------final新增---------------------------------
+
     public static void deleteDirectory(Path path) {
         if (Files.isDirectory(path)) {
             try {
@@ -51,7 +51,7 @@ public class FileSystemListener extends VirtualFileAdapter {
             }
         }
     }
-    //----------------------------------------------------final新增---------------------------------
+
 
     public void startListening() {
         if (!isListening) {
@@ -66,7 +66,7 @@ public class FileSystemListener extends VirtualFileAdapter {
         if (!isListening) {
             return;
         }
-        //***********************************************************************
+
         VirtualFile file = event.getFile();
         Path path = Path.of(file.getPath());
         String fileName = file.getName();
@@ -78,7 +78,7 @@ public class FileSystemListener extends VirtualFileAdapter {
                 !filePathContainsGitFolder(path)) {
             handleFileCreate(file);
         }
-        //***********************************************************************
+
     }
 
     @Override
@@ -122,7 +122,7 @@ public class FileSystemListener extends VirtualFileAdapter {
         if (!isListening) {
             return;
         }
-        // 处理文件重命名事件
+
         if (VirtualFile.PROP_NAME.equals(event.getPropertyName())) {
             VirtualFile file = event.getFile();
             if (!file.getName().equals("autoversion.record.bin") &&
@@ -140,14 +140,14 @@ public class FileSystemListener extends VirtualFileAdapter {
             return;
         }
         try {
-            //***********************************************************************修改patch
+
             // 获取文件内容
-            String fileContent = new String(file.contentsToByteArray());//-----------------------------------------------------------------------------------------------------------------------------------
+            String fileContent = new String(file.contentsToByteArray());
 
             List<String> emptyList = new ArrayList<>();
-            System.out.println("emptyList size: " + emptyList.size());
-            List<String> Filecontent = Files.readAllLines(Paths.get(file.getPath()));//--------------------------------------------------
-            System.out.println("Filecontent///////////////////////////////////////////////////////////\n " + Filecontent);
+
+            List<String> Filecontent = Files.readAllLines(Paths.get(file.getPath()));
+
             Patch<String> patch ;
 
             if (Filecontent.isEmpty()) {
@@ -161,8 +161,8 @@ public class FileSystemListener extends VirtualFileAdapter {
             else{
                 patch = DiffUtils.diff(emptyList, Filecontent);
             }
-            FileChange fileChange = new FileChange(file.getPath(), patch, FileChange.ChangeType.ADD);//------------------------------------------------------------------------------------------------------------------------------------------
-            //***********************************************************************修改patch
+            FileChange fileChange = new FileChange(file.getPath(), patch, FileChange.ChangeType.ADD);
+
             VersionStorage.saveVersion(Map.of(file.getPath(), fileChange)); // 保存版本
             refreshToolWindow(); // 刷新 ToolWindow
         } catch (IOException e) {
@@ -206,11 +206,11 @@ public class FileSystemListener extends VirtualFileAdapter {
         List<String>OldFilecontent = convertStringToList(fileContent);
         List<String> NewFilecontent = new ArrayList<>();
         Patch<String> patch = DiffUtils.diff(OldFilecontent, NewFilecontent);
-        //***********************************************************************修改patch
-        //Patch<String> emptyPatch = new Patch<>();
 
-        FileChange fileChange = new FileChange(file.getPath(), patch, FileChange.ChangeType.DELETE);//---------------------------------------------------------------------------------------------------------------------------------------
-        //***********************************************************************修改patch
+
+
+        FileChange fileChange = new FileChange(file.getPath(), patch, FileChange.ChangeType.DELETE);
+
         VersionStorage.saveVersion(Map.of(file.getPath(), fileChange)); // 保存版本
         refreshToolWindow(); // 刷新 ToolWindow
     }
@@ -219,10 +219,10 @@ public class FileSystemListener extends VirtualFileAdapter {
         if (filePath == null) {
             return;
         }
-        //***********************************************************************修改patch
+
         Patch<String> emptyPatch = new Patch<>();
-        FileChange fileChange = new FileChange(filePath, emptyPatch, FileChange.ChangeType.DELETE);//---------------------------------------------------------------------------------------------------------------------------------------
-        //***********************************************************************修改patch
+        FileChange fileChange = new FileChange(filePath, emptyPatch, FileChange.ChangeType.DELETE);
+
         VersionStorage.saveVersion(Map.of(filePath, fileChange)); // 保存版本
         refreshToolWindow(); // 刷新 ToolWindow
     }
@@ -232,11 +232,11 @@ public class FileSystemListener extends VirtualFileAdapter {
         if (file.isDirectory()) {
             return;
         }
-        //***********************************************************************已修改
+
         // 处理文件重命名，视为删除旧文件并创建新文件，但是文件内容不变
         String oldFilePath = file.getParent().getPath() + "/" + oldName;
         handleFileDelete(oldFilePath, oldName); // 删除旧文件
-//***********************************************************************已修改
+
         handleFileCreate(file);
     }
 
