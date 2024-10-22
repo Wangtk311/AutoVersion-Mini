@@ -9,6 +9,8 @@ JavaEE 课程项目： IntelliJ IDEA 实用版本控制插件开发
 
 <!-- Plugin description -->
 一个可以在写代码过程中自动保存版本并且可以回滚和推送到Git的实用小插件。
+
+由于卡DDL开发时间太短导致设计混乱，如有时间应当重构逻辑。
 <!-- Plugin description end -->
 
 ## Installation
