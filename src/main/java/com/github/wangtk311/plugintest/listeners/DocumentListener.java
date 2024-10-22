@@ -18,8 +18,6 @@ import com.github.javaparser.ast.*;
 import com.github.javaparser.ast.body.*;
 import com.github.difflib.*;
 import org.jetbrains.annotations.NotNull;
-
-
 import java.util.*;
 
 public class DocumentListener implements com.intellij.openapi.editor.event.DocumentListener {
@@ -37,10 +35,7 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
 
     private String tracingFilePath ;
 
-
     private Document tracingDocument;
-
-
 
     public DocumentListener(Project project, Document document,VirtualFile file) {
         this.project = project;
@@ -58,12 +53,9 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         return tracingFilePath;
     }
 
-
-
     public Document getDocument() {
         return tracingDocument;
     }
-
 
     public  void getOldfileContentFirst(String filePath){
         System.out.println("Find last version.");
@@ -74,20 +66,14 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
                 versionIndex = i;
             }
         }
-
-
         Map<String, FileChange> versionContents = VersionStorage.getVersion(versionIndex);
 
-
         FileChange filechange = versionContents.get(filePath);
-
 
         String filecontent = filechange.getFileContent(versionIndex);
 
         // 写入oldFilecontent
         oldFilecontent = filecontent;
-
-
     }
 
     @Override
@@ -95,7 +81,6 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         if (!isListening) {
             return;
         }
-
 
         FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
         if (!fileEditorManager.hasOpenFiles()) {
@@ -127,8 +112,6 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         try {
             System.out.println("hasSignificantChanges");
             if (hasChanges(oldFilecontent, currentFilecontent)) {
-
-
                 timer = new Timer();  // 必须重新创建 Timer 实例
                 Timerstatus=true;
             }
@@ -136,13 +119,11 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
             throw new RuntimeException(e);
         }
 
-
         // 创建新的任务
         TimerTask task = new TimerTask() {
             @Override
             public void run() {
                 ApplicationManager.getApplication().invokeLater(() -> {
-
 
                     List<String>OldFilecontent = convertStringToList(oldFilecontent);
                     List<String>CurrentFilecontent = convertStringToList(currentFilecontent);
@@ -152,12 +133,7 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
                     saveProjectVersion(patch);
                     refreshToolWindow();
 
-
                     oldFilecontent = getCurrentFileContent(currentFile);
-
-
-
-
                 });
             }
         };

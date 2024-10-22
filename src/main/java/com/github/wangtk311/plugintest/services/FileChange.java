@@ -3,7 +3,6 @@ package com.github.wangtk311.plugintest.services;
 import com.github.difflib.patch.Patch;
 import com.github.difflib.patch.PatchFailedException;
 import com.github.difflib.patch.AbstractDelta;
-
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,8 +20,6 @@ public class FileChange implements Serializable {  // 实现 Serializable 接口
     private Patch<String> EachFilePatch; // 如果文件是新增或修改的，保存其内容
     private ChangeType changeType;
 
-
-
     public FileChange(String filePath, Patch<String> EachFilePatch, ChangeType changeType) {
         this.filePath = filePath;
         this.EachFilePatch = EachFilePatch;
@@ -39,7 +36,6 @@ public class FileChange implements Serializable {  // 实现 Serializable 接口
 
         return projectVersions;
     }
-
 
     public List<Patch<String>> getEachFilePatches(List<Map<String, FileChange>> listOfMaps, String filePath,int end) {
         List<Patch<String>> patches = new ArrayList<>();
@@ -65,7 +61,6 @@ public class FileChange implements Serializable {  // 实现 Serializable 接口
 
         return EachFilePatch;
     }
-
 
     private static void printPatchDetails(Patch<String> patch) {
         for (AbstractDelta<String> delta : patch.getDeltas()) {

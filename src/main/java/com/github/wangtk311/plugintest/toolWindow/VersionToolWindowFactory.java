@@ -22,7 +22,6 @@ import com.intellij.ui.components.JBList;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
 import org.jetbrains.annotations.NotNull;
-
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
@@ -39,16 +38,14 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
 
     private static VersionToolWindowFactory instance;
 
-    private VersionToolWindowFactory() {
+    private VersionToolWindowFactory() {}
 
-    }
     public static VersionToolWindowFactory getInstance(Project project) {
         if (instance == null) {
             instance = new VersionToolWindowFactory();
         }
         return instance;
     }
-
 
     private JPanel historyWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
         JPanel panel = new JPanel();
@@ -423,7 +420,6 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
             Process checkoutProcess = checkoutProcessBuilder.start();
             checkoutProcess.waitFor();
 
-
             // 从磁盘刷新一下项目目录
             project.getBaseDir().refresh(false, true);
 
@@ -561,8 +557,6 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
             textArea.append("操作: " + fileChange.getChangeType() + "\n");
             textArea.append("内容:\n\n[===文件开始===]\n" +  fileChange.getFileContent(versionIndex)+ "\n[===文件结束===]\n\n");
         }
-
-
 
         // 添加“返回”按钮
         JButton backButton = new JButton("◀ 返回版本历史列表");

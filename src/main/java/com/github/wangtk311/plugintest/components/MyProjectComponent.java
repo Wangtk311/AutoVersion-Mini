@@ -2,7 +2,6 @@ package com.github.wangtk311.plugintest.components;
 
 import com.github.difflib.DiffUtils;
 import com.github.difflib.patch.Patch;
-
 import com.github.wangtk311.plugintest.listeners.DocumentListener;
 import com.github.wangtk311.plugintest.listeners.FileSystemListener; // 引入新添加的监听器
 import com.github.wangtk311.plugintest.services.FileChange;
@@ -25,7 +24,6 @@ import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import org.jetbrains.annotations.NotNull;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -53,7 +51,6 @@ public class MyProjectComponent implements ProjectComponent {
         }
         return myProjectComponent;
     }
-
 
     @Override
     public void projectOpened() {
@@ -127,13 +124,11 @@ public class MyProjectComponent implements ProjectComponent {
                             });
                         });
 
-
                         //切换到主分支
                         ProcessBuilder checkoutProcessBuilder = new ProcessBuilder("git", "checkout", "-b", "main");
                         checkoutProcessBuilder.directory(new File(project.getBasePath().replace("\\", "/")));
                         Process checkoutProcess = checkoutProcessBuilder.start();
                         checkoutProcess.waitFor();
-
 
                         // 添加和提交
                         ProcessBuilder addProcessBuilder = new ProcessBuilder("git", "add", ".");
@@ -154,7 +149,6 @@ public class MyProjectComponent implements ProjectComponent {
             });
             System.out.println("Git repo initialized.");
         }
-
 
         ProcessBuilder checkoutProcessBuilder = new ProcessBuilder("git", "checkout","-b", "main");//应该-b
         checkoutProcessBuilder.directory(new File(project.getBasePath().replace("\\", "/")));
@@ -185,12 +179,6 @@ public class MyProjectComponent implements ProjectComponent {
             throw new RuntimeException(e);
         }
 
-
-
-
-
-
-
         VersionStorage.VERSION_STORAGE_FILE = project.getBasePath() + "/autoversion.record.bin";
         System.out.println("AutoVersion History file: " + VersionStorage.VERSION_STORAGE_FILE);
         File versionFile = new File(VersionStorage.VERSION_STORAGE_FILE);
@@ -220,7 +208,6 @@ public class MyProjectComponent implements ProjectComponent {
             // 初始化保存当前项目状态为第一版
             Map<String, FileChange> fileChanges = new HashMap<>();
             Path projectRoot = Paths.get(project.getBasePath());
-
 
             // 递归遍历项目目录中的文件
             try {
@@ -310,7 +297,6 @@ public class MyProjectComponent implements ProjectComponent {
         }
     }
 
-
     private void createGitIgnore(Project project) {
         AtomicReference<VirtualFile> gitIgnore = new AtomicReference<>();
         try {
@@ -339,6 +325,4 @@ public class MyProjectComponent implements ProjectComponent {
             e.printStackTrace();
         }
     }
-
-
 }

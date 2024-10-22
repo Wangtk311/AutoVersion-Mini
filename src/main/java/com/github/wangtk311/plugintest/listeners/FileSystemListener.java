@@ -14,7 +14,6 @@ import com.intellij.openapi.vfs.VirtualFilePropertyEvent;
 import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -207,8 +206,6 @@ public class FileSystemListener extends VirtualFileAdapter {
         List<String> NewFilecontent = new ArrayList<>();
         Patch<String> patch = DiffUtils.diff(OldFilecontent, NewFilecontent);
 
-
-
         FileChange fileChange = new FileChange(file.getPath(), patch, FileChange.ChangeType.DELETE);
 
         VersionStorage.saveVersion(Map.of(file.getPath(), fileChange)); // 保存版本
@@ -226,7 +223,6 @@ public class FileSystemListener extends VirtualFileAdapter {
         VersionStorage.saveVersion(Map.of(filePath, fileChange)); // 保存版本
         refreshToolWindow(); // 刷新 ToolWindow
     }
-
 
     private void handleFileRename(String oldName, VirtualFile file) {
         if (file.isDirectory()) {
