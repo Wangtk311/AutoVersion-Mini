@@ -134,11 +134,13 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         Timerstatus=false;
         try {
             System.out.println("hasSignificantChanges");
-            if (hasChangesJava(oldFilecontent, currentFilecontent)) {
-                timer = new Timer();  // 必须重新创建 Timer 实例
-                Timerstatus=true;
+            if (curruentFileIsJava(currentFile)) {
+                if (hasChangesJava(oldFilecontent, currentFilecontent)) {
+                    timer = new Timer();  // 必须重新创建 Timer 实例
+                    Timerstatus=true;
+                }
             }
-            else if (hasChangesOthers(oldFilecontent, currentFilecontent)){
+            else if(hasChangesOthers(oldFilecontent, currentFilecontent)){
                 timer = new Timer();  // 必须重新创建 Timer 实例
                 Timerstatus=true;
             }
@@ -188,6 +190,11 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         return filePath;
     }
 
+    private boolean curruentFileIsJava(VirtualFile currentFile) {
+        System.out.println("currentFile.getName()="+currentFile.getName()+",result="+currentFile.getName().endsWith(".java"));
+        return currentFile.getName().endsWith(".java");
+    }
+
     private  boolean hasChangesOthers(String oldFile, String newFile) throws Exception {
         List<String>OldFilecontent = convertStringToList(oldFile);
         List<String>CurrentFilecontent = convertStringToList(newFile);
@@ -222,11 +229,6 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         // 检查是否有新类的声明
         if (newClasses.size() > oldClasses.size()) {
             return true;  // 新增类，记录变更
-        }
-
-        // 检查是否有类的删除
-        if (newClasses.size() < oldClasses.size()) {
-            return true;  // 删除类，记录变更
         }
 
         for (ClassOrInterfaceDeclaration oldClass : oldClasses) {
