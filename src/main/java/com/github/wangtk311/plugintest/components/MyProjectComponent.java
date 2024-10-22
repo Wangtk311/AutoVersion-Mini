@@ -3,7 +3,7 @@ package com.github.wangtk311.plugintest.components;
 import com.github.difflib.DiffUtils;
 import com.github.difflib.patch.Patch;
 import com.github.wangtk311.plugintest.listeners.DocumentListener;
-import com.github.wangtk311.plugintest.listeners.FileSystemListener; // 引入新添加的监听器
+import com.github.wangtk311.plugintest.listeners.FileSystemListener;
 import com.github.wangtk311.plugintest.services.FileChange;
 import com.github.wangtk311.plugintest.services.VersionStorage;
 import com.github.wangtk311.plugintest.toolWindow.VersionToolWindowFactory;

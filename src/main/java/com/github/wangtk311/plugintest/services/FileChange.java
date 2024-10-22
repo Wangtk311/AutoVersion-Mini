@@ -31,9 +31,7 @@ public class FileChange implements Serializable {  // 实现 Serializable 接口
     }
 
     public List<Map<String, FileChange>> getProjectVersions() {
-
         List<Map<String, FileChange>>  projectVersions=VersionStorage.getProjectVersions();
-
         return projectVersions;
     }
 
@@ -42,23 +40,17 @@ public class FileChange implements Serializable {  // 实现 Serializable 接口
         System.out.println("getEachFilePatches---listOfMaps: \n" + listOfMaps);
         int i=0;
         for (Map<String, FileChange> map : listOfMaps) {
-
             FileChange fileChange = map.get(filePath);
             if (fileChange != null) {
-
-
                 patches.add(fileChange.getEachFilePatch());
             }
-
             if(i==end)
                 break;
             i++;
         }
-
         return patches;
     }
     public Patch<String> getEachFilePatch() {
-
         return EachFilePatch;
     }
 
@@ -79,10 +71,8 @@ public class FileChange implements Serializable {  // 实现 Serializable 接口
         List<String> currentContent = new ArrayList<>();
         for (int i = 0; i < patches.size(); i++) {
             Patch<String> patch = patches.get(i);
-
             System.out.println("-----------------------------");
             try {
-
                 // 应用每个补丁并更新 currentContent
                 currentContent = patch.applyTo(currentContent);
                 System.out.println("currentContent---------------------------:\n" + currentContent);
@@ -92,19 +82,15 @@ public class FileChange implements Serializable {  // 实现 Serializable 接口
                 break;  // 如果应用失败，可以选择中断或继续处理其他补丁
             }
         }
-
-
         return currentContent;
     }
 
     public String getFileContent(int end)  {
         System.out.println("getFileContent---filePath: \n" + filePath);
         List<Patch<String>> patches = getEachFilePatches(getProjectVersions(), filePath,end);
-
         List<String> fileContent = applyPatches(patches);
         String FileContent = String.join("\n", fileContent);
         System.out.println("getFileContent---FileContent: \n" + FileContent);
-
         return FileContent;
     }
 

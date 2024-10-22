@@ -139,7 +139,6 @@ public class FileSystemListener extends VirtualFileAdapter {
             return;
         }
         try {
-
             // 获取文件内容
             String fileContent = new String(file.contentsToByteArray());
 

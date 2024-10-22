@@ -22,7 +22,6 @@ import java.util.*;
 
 public class DocumentListener implements com.intellij.openapi.editor.event.DocumentListener {
     private final Project project;
-    private final Map<String, String> lastFileContentMap = new HashMap<>();
     public static boolean isListening = false;
     public static int versionIndex;
 

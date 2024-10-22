@@ -53,7 +53,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         JLabel label2 = new JLabel("-", SwingConstants.CENTER);
         JButton gitButton = new JButton("→☍ 将最新版本推送到Git");
         gitButton.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(panel, "确定要推送到Git吗?\n这将保存当前的版本作为一个大版本的提交,\n并保存一系列小版本的提交。\n该操作不可逆!", "双重确认", JOptionPane.YES_NO_OPTION);
+            int confirm = JOptionPane.showConfirmDialog(panel, "确定要推送到Git吗?\n这将保存当前的版本作为一个大版本的提交,\n并保存一系列小版本的提交。\n该操作不可逆!\n\n确认后请等待操作结果出现后\n再进行后续操作!", "双重确认", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 // 获取最新的小版本号
                 int latestMinorVersion = VersionStorage.getProjectVersions().size() - 1;
@@ -70,10 +70,8 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 // 将版本数据写入版本映射文件
                 VersionStorage.saveMapToDisk();
 
-
                 // 更新latestMajorVersion
                 latestMajorVersion = latestMajorVersion + 1;
-
 
                 // 暂时关闭文件系统监听器和文档监听器
                 pauseAllListeners(project);
@@ -194,13 +192,13 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                     e1.printStackTrace();
                 }
 
+                JOptionPane.showMessageDialog(panel, "已成功推送到Git!\n请刷新文件系统!", "推送成功", JOptionPane.CLOSED_OPTION);
+
                 // 刷新文件系统
                 project.getBaseDir().refresh(false, true);
 
                 // 重启文件系统监听器和文档监听器
                 enableAllListeners(project);
-
-                JOptionPane.showMessageDialog(panel, "已成功推送到Git!", "推送成功", JOptionPane.CLOSED_OPTION);
 
                 // 清空当前面板内容并重新加载历史版本列表
                 panel.removeAll(); // 清空面板
@@ -253,7 +251,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
 
         JButton backButton = new JButton("✖ 抹掉所有历史版本");
         backButton.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(panel, "确定要抹掉所有历史版本吗?\n这将同步保存当前状态作为第一个\n历史版本并提交到Git。\n该操作不可逆!", "双重确认", JOptionPane.YES_NO_OPTION);
+            int confirm = JOptionPane.showConfirmDialog(panel, "确定要抹掉所有历史版本吗?\n这将同步保存当前状态作为第一个\n历史版本并提交到Git。\n该操作不可逆!\n\n确认后请等待操作结果出现后\n再进行后续操作!", "双重确认", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 // 暂时关闭文件系统监听器和文档监听器
                 pauseAllListeners(project);
@@ -344,12 +342,8 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 // 将版本数据写入磁盘
                 VersionStorage.saveVersionsToDisk();
 
-                // 显示成功信息
-                JOptionPane.showMessageDialog(panel, "已抹除所有历史版本!", "抹除成功", JOptionPane.CLOSED_OPTION);
-
                 // 从磁盘刷新一下项目目录
                 project.getBaseDir().refresh(false, true);
-
 
                 gitInit(project);
 
@@ -360,6 +354,9 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
 
                 // 重新启用文件系统监听器和文档监听器
                 enableAllListeners(project);
+
+                // 显示成功信息
+                JOptionPane.showMessageDialog(panel, "已抹除所有历史版本!", "抹除成功", JOptionPane.CLOSED_OPTION);
 
                 // 清空当前面板内容并重新加载历史版本列表
                 panel.removeAll(); // 清空面板
@@ -577,7 +574,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
 
             // 显示确认对话框，包含大版本和小版本信息
             int confirm = JOptionPane.showConfirmDialog(panel,
-                    "确定要回滚到 Version " + finalMajorVersion + "." + finalMinorVersion + " 版本吗?\n这将丢弃当前的工作,\n同时丢弃回滚目标后面的版本!",
+                    "确定要回滚到 Version " + finalMajorVersion + "." + finalMinorVersion + " 版本吗?\n这将丢弃当前的工作,\n同时丢弃回滚目标后面的版本!\n\n确认后请等待操作结果出现后\n再进行后续操作!",
                     "双重确认", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 // 暂时关闭文件系统监听器和文档监听器
@@ -687,7 +684,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 VersionStorage.saveVersionsToDisk();
 
                 // 显示成功信息
-                JOptionPane.showMessageDialog(panel, "已回滚到 Version " + finalMajorVersion + "." + finalMinorVersion + " 版本!", "回滚成功", JOptionPane.CLOSED_OPTION);
+                JOptionPane.showMessageDialog(panel, "已回滚到 Version " + finalMajorVersion + "." + finalMinorVersion + " 版本!\n请刷新文件系统!", "回滚成功", JOptionPane.CLOSED_OPTION);
 
                 // 从磁盘刷新一下项目目录
                 project.getBaseDir().refresh(false, true);
@@ -741,7 +738,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
 
     // 判断是否属于 .git 文件夹中的文件
     private boolean filePathContainsGitFolder(Path path) {
-        return path.toString().contains(File.separator + ".git" + File.separator);
+        return path.toString().contains("/.git/") || path.toString().contains("\\.git\\");
     }
 }
 
