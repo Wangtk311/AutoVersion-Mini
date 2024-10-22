@@ -2,7 +2,6 @@ package com.github.wangtk311.plugintest.toolWindow;
 
 import com.github.difflib.DiffUtils;
 import com.github.difflib.patch.Patch;
-import com.github.difflib.patch.PatchFailedException;
 import com.github.wangtk311.plugintest.components.MyProjectComponent;
 import com.github.wangtk311.plugintest.listeners.FileSystemListener;
 import com.github.wangtk311.plugintest.services.FileChange;
@@ -16,7 +15,6 @@ import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.editor.Document;
-import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
@@ -28,9 +26,7 @@ import org.jetbrains.annotations.NotNull;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -71,37 +67,20 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                     JOptionPane.showMessageDialog(panel, "没有新的版本需要推送!", "推送失败", JOptionPane.CLOSED_OPTION);
                     return;
                 }
-                //int latestMinorVersion = VersionStorage.getProjectVersions().size() - 1;
                 // 更新大版本号映射表
                 VersionStorage.majorToMinorVersionMap.put(VersionStorage.majorToMinorVersionMap.size() + 1, latestMinorVersion);
                 // 将版本数据写入版本映射文件
                 VersionStorage.saveMapToDisk();
-
-
-
-                //----------------------------------------------------final新增---------------------------------
                 // 更新latestMajorVersion
                 latestMajorVersion = latestMajorVersion + 1;
-                //----------------------------------------------------final新增---------------------------------
-
-
-
-                //
-                // 操作
-                //
-
-                //----------------------------------------------------final新增---------------------------------
                 //
                 // 推送操作开始
                 //
-
                 // 暂时关闭文件系统监听器和文档监听器
                 pauseAllListeners(project);
-
                 // 获取上一个大版本号及对应的小版本号
                 int lastMajorVersion = VersionStorage.majorToMinorVersionMap.size() - 1; // 上一个大版本号
                 int lastMinorVersion = VersionStorage.majorToMinorVersionMap.get(lastMajorVersion); // 上一个小版本号
-
                 // 首先切换到主分支
                 ProcessBuilder processBuilder1 = new ProcessBuilder("git", "checkout", "main");
                 processBuilder1.directory(new File(project.getBasePath()));
@@ -111,11 +90,9 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 } catch (IOException | InterruptedException e1) {
                     e1.printStackTrace();
                 }
-
                 // 从上一次commit的小版本号开始，逐个commit到最新的小版本号，首先使用git branch **从当前创建新的分支，如果新的大版本为x.0，则命名此小版本分支为Vx-1，例如新提交的大版本为2.0，则命名分支为V1分支
                 String branchName = "V" + lastMajorVersion;
                 ProcessBuilder processBuilder2 = new ProcessBuilder("git", "checkout", "-b", branchName);
-
                 // 设置工作目录
                 processBuilder2.directory(new File(project.getBasePath()));
                 try {
@@ -124,14 +101,12 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 } catch (IOException | InterruptedException e1) {
                     e1.printStackTrace();
                 }
-
                 // 从上一次commit的小版本号开始，逐个commit到最新的小版本号
                 for (int i = lastMinorVersion + 1; i <= latestMinorVersion; i++) {
                     // 回滚到当前小版本
                     try {
                         Files.walk(Paths.get(project.getBasePath())).forEach(path -> {
                             File file = path.toFile();
-
                             String fileName = file.getName();
 
                             // 排除不需要删除的文件
@@ -223,9 +198,6 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 //
                 // 推送操作结束
                 //
-
-                //----------------------------------------------------final新增---------------------------------
-
 
                 JOptionPane.showMessageDialog(panel, "已成功推送到Git!", "推送成功", JOptionPane.CLOSED_OPTION);
 
@@ -322,108 +294,6 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 // 清空版本映射表
                 VersionStorage.majorToMinorVersionMap.clear();
 
-                //----------------------------------------------------final新增---------------------------------
-//                // 初始化Git，删除原来的.git文件夹，并重新init，checkout到main分支，然后commit当前状态为V1.0
-//                // 删除原来的.git文件夹，但不删除.gitignore和.gitattributes文件
-//                try {
-//                    Files.walk(Paths.get(project.getBasePath())).forEach(path -> {
-//                        File file = path.toFile();
-//                        if (file.isDirectory() && file.getName().equals(".git")) {
-//                            FileSystemListener.deleteDirectory(path);
-//                        }
-//                    });
-//                } catch (IOException e3) {
-//                    throw new RuntimeException(e3);
-//                }
-//
-//                // 初始化Git
-//                ProcessBuilder processBuilder = new ProcessBuilder("git", "init");
-//                processBuilder.directory(new File(project.getBasePath()));
-//                try {
-//                    Process process = processBuilder.start();
-//                    process.waitFor();
-//                } catch (IOException | InterruptedException e1) {
-//                    e1.printStackTrace();
-//                }
-//
-//                // 切换到main分支
-//                ProcessBuilder processBuilder2 = new ProcessBuilder("git", "checkout", "-b", "main");
-//                processBuilder2.directory(new File(project.getBasePath()));
-//                try {
-//                    Process process = processBuilder2.start();
-//                    process.waitFor();
-//                } catch (IOException | InterruptedException e1) {
-//                    e1.printStackTrace();
-//                }
-//
-//                // 检查.gitignore文件是否存在，如果不存在则创建
-//                // 在主线程中执行 write action
-//                ApplicationManager.getApplication().invokeAndWait(() -> {
-//                    ApplicationManager.getApplication().runWriteAction(() -> {
-//                        try {
-//                            // 刷新虚拟文件系统，但在新线程中执行，避免占用EDT，等待刷新完成再继续
-//                            VirtualFileManager.getInstance().asyncRefresh(() -> {
-//                                System.out.println("Virtual File System refreshed.");
-//                            });
-//
-//                            // 尝试获取并创建 .gitignore 文件
-//                            VirtualFile gitIgnore = project.getBaseDir().findChild(".gitignore");
-//                            String toAppend = "\nautoversion.record.bin\nautoversion.map.bin\n";
-//                            String existingContent;
-//
-//                            if (gitIgnore != null && gitIgnore.isValid()) {
-//                                // 如果文件已存在，读取其内容
-//                                existingContent = new String(gitIgnore.contentsToByteArray());
-//                                System.out.println("Exist .gitignore:");
-//                                System.out.println(gitIgnore.getPath());
-//                                System.out.println(existingContent);
-//
-//                                if (!existingContent.contains("autoversion.record.bin") || !existingContent.contains("autoversion.map.bin")) {
-//                                    // 写入内容
-//                                    Files.write(Paths.get(gitIgnore.getPath().replace("\\", "/")),
-//                                            toAppend.getBytes(),
-//                                            StandardOpenOption.APPEND);
-//                                    System.out.println("Appended to .gitignore.");
-//                                } else {
-//                                    System.out.println("gitignore contains autoversion.record.bin and autoversion.map.bin, skip adding.");
-//                                }
-//                            } else {
-//                                if (gitIgnore != null) {
-//                                    // 如果文件无效，在磁盘上删除
-//                                    gitIgnore.delete(this);
-//                                }
-//                                // 创建新的 .gitignore 文件
-//                                System.out.println("Created .gitignore.");
-//                                createGitIgnore(project);
-//                            }
-//                        } catch (IOException e5) {
-//                            e5.printStackTrace(); // 更好地处理异常
-//                        }
-//                    });
-//                });
-//
-//                // 添加所有文件到git
-//                ProcessBuilder processBuilder3 = new ProcessBuilder("git", "add", ".");
-//                processBuilder3.directory(new File(project.getBasePath()));
-//                try {
-//                    Process process = processBuilder3.start();
-//                    process.waitFor();
-//                } catch (IOException | InterruptedException e1) {
-//                    e1.printStackTrace();
-//                }
-//
-//                // 提交当前状态到main分支
-//                ProcessBuilder processBuilder4 = new ProcessBuilder("git", "commit", "-m\"V1.0\"");
-//                processBuilder4.directory(new File(project.getBasePath()));
-//                try {
-//                    Process process = processBuilder4.start();
-//                    process.waitFor();
-//                    System.out.println("Commit V1.0 to main branch");
-//                } catch (IOException | InterruptedException e1) {
-//                    e1.printStackTrace();
-//                }
-                //----------------------------------------------------final新增---------------------------------
-
                 // 创建新的 fileChanges map 来保存当前项目状态
                 Map<String, FileChange> fileChanges = new HashMap<>();
                 Path projectRoot = Paths.get(project.getBasePath());
@@ -432,9 +302,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 try {
                     Files.walk(projectRoot).forEach(path -> {
                         File file = path.toFile();
-                        //**************************修改patch
                         String fileName = file.getName();
-
 
                         // 排除不需要的文件
                         if (!fileName.equals("autoversion.record.bin") &&
@@ -459,9 +327,6 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                                 }
                             }
                         }
-
-                        //**************************
-
                     });
                 } catch (IOException e3) {
                     throw new RuntimeException(e3);
@@ -482,18 +347,12 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 // 从磁盘刷新一下项目目录
                 project.getBaseDir().refresh(false, true);
 
-
-                //--------------------------------------------------------------git init and git commit first version-------------------------------------
-
                 gitInit(project);
-
-                //--------------------------------------------------------------
 
                 // 对每一个listener都应用getOldfileContentFirst(filePath);
                 for (DocumentListener listener : MyProjectComponent.getInstance(project).documentListeners){
                     listener.getOldfileContentFirst(listener.getTracingFilePath());
                 }
-
 
                 // 重新启用文件系统监听器和文档监听器
                 enableAllListeners(project);
@@ -551,7 +410,7 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 System.err.println("git init failed with exit code: " + exitCode);
             }
             if(exitCode==0){
-                System.err.println("git init succeed with  code: " + exitCode + " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                System.err.println("git init succeed with  code: " + exitCode + " !");
             }
 
             //切换到主分支
@@ -559,7 +418,6 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
             checkoutProcessBuilder.directory(new File(project.getBasePath().replace("\\", "/")));
             Process checkoutProcess = checkoutProcessBuilder.start();
             checkoutProcess.waitFor();
-
 
             // 从磁盘刷新一下项目目录
             project.getBaseDir().refresh(false, true);
@@ -609,7 +467,6 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                     }
                 });
             });
-
 
             // 添加和提交
             ProcessBuilder addProcessBuilder = new ProcessBuilder("git", "add", ".");
@@ -672,7 +529,6 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
     private void showVersionDetails(JPanel panel, int versionIndex, Project project, ToolWindow toolWindow){
         Map<String, FileChange> versionContents = VersionStorage.getVersion(versionIndex);
 
-        //**************************大小版本
         // 找到当前小版本对应的大版本和小版本
         int majorVersion = 0;
         int minorVersion = 0;
@@ -687,11 +543,10 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 break;
             }
         }
-        //**************************大小版本
 
         panel.removeAll(); // 清除旧内容
 
-        System.out.println("***************************************************************************************************************\n");
+        System.out.println("****************************\n");
         JTextArea textArea = new JTextArea(20, 50);
         textArea.append("历史版本: Version " + majorVersion + "." + minorVersion + " 的内容是:\n\n");
         for (Map.Entry<String, FileChange> entry : versionContents.entrySet()) {
@@ -699,14 +554,8 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
             textArea.append("----------------------------------------------\n");
             textArea.append("文件: " + fileChange.getFilePath() + "\n");
             textArea.append("操作: " + fileChange.getChangeType() + "\n");
-            textArea.append("内容:\n\n[===文件开始===]\n" +  fileChange.getFileContent(versionIndex)+ "\n[===文件结束===]\n\n");//-----------------------------------------------------------------------------------
-//            System.out.println("----------------------------------------------\n");
-//            System.out.println("文件: " + fileChange.getFilePath() + "\n");
-//            System.out.println("操作: " + fileChange.getChangeType() + "\n");
-//            System.out.println("内容:\n\n[===文件开始===]\n" + (fileChange.getEachFilePatch().toString() == null ? "[文件无内容]" : fileChange.getEachFilePatch().toString()) + "\n[===文件结束===]\n\n");//--------------------------------------------------
+            textArea.append("内容:\n\n[===文件开始===]\n" +  fileChange.getFileContent(versionIndex)+ "\n[===文件结束===]\n\n");
         }
-
-
 
         // 添加“返回”按钮
         JButton backButton = new JButton("◀ 返回版本历史列表");
@@ -719,16 +568,12 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
         // 添加“恢复版本”按钮
         JButton restoreButton = new JButton("↑ 回滚到此版本");
 
-
         //**************************大小版本
         int finalMajorVersion = majorVersion;
         int finalMinorVersion = minorVersion;
         //**************************大小版本
 
-
         restoreButton.addActionListener(e -> {
-
-
             // 显示确认对话框，包含大版本和小版本信息
             int confirm = JOptionPane.showConfirmDialog(panel,
                     "确定要回滚到 Version " + finalMajorVersion + "." + finalMinorVersion + " 版本吗?\n这将丢弃当前的工作,\n同时丢弃回滚目标后面的版本!",
@@ -737,16 +582,13 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 // 暂时关闭文件系统监听器和文档监听器
                 pauseAllListeners(project);
 
-                //*********************************************************新增
                 // 关闭所有打开的编辑器
                 FileEditorManager editorManager = FileEditorManager.getInstance(project);
                 FileEditor[] editors =  editorManager.getAllEditors();
                 for (FileEditor editor : editors) {
                     editorManager.closeFile(editor.getFile());
                 }
-                //*********************************************************新增
 
-                //----------------------------------------------------final新增---------------------------------
                 // 回滚Git信息
                 // 首先切换到主分支，然后逐个commit大版本回滚到VfinalMajorVersion.0
                 ProcessBuilder processBuilder1 = new ProcessBuilder("git", "checkout", "main");
@@ -782,17 +624,11 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                     }
                 }
 
-                //----------------------------------------------------final新增---------------------------------
-
-
-
                 System.out.println("回滚到 Version " + (versionIndex + 1) + " 版本");
                 // 首先从根目录递归检索删除当前项目中的文件，然后依照版本从前到后逐步恢复选中版本的文件，可以避免留下当前版本中存在但回滚目标版本中不存在的文件
                 try {
                     Files.walk(Paths.get(project.getBasePath())).forEach(path -> {
                         File file = path.toFile();
-
-                        //*******************************************************
                         String fileName = file.getName();
 
                         // 排除不需要删除的文件
@@ -807,9 +643,6 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                                 e2.printStackTrace();
                             }
                         }
-                        //*******************************************************已修改
-
-
                     });
                 } catch (IOException e3) {
                     throw new RuntimeException(e3);
@@ -865,7 +698,6 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
                 // 重新绘制面板
                 panel.revalidate(); // 通知 Swing 重新布局
                 panel.repaint(); // 重新绘制面板
-
 
                 // 重新启用文件系统监听器和文档监听器
                 enableAllListeners(project);

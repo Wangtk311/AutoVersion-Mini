@@ -1,11 +1,9 @@
 package com.github.wangtk311.plugintest.listeners;
 
 import com.github.difflib.patch.Patch;
-import com.github.difflib.patch.PatchFailedException;
 import com.github.wangtk311.plugintest.services.FileChange;
 import com.github.wangtk311.plugintest.services.VersionStorage;
 import com.github.wangtk311.plugintest.toolWindow.VersionToolWindowFactory;
-import com.intellij.notification.impl.ui.StickyButton;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.Document;
@@ -20,8 +18,6 @@ import com.github.javaparser.ast.*;
 import com.github.javaparser.ast.body.*;
 import com.github.difflib.*;
 import org.jetbrains.annotations.NotNull;
-
-
 import java.util.*;
 
 public class DocumentListener implements com.intellij.openapi.editor.event.DocumentListener {
@@ -39,11 +35,8 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
 
     private String tracingFilePath ;
 
-    //**************************************
     private Document tracingDocument;
-//**************************************
 
-    //**************************************
     public DocumentListener(Project project, Document document,VirtualFile file) {
         this.project = project;
         this.tracingDocument = document;
@@ -54,21 +47,18 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
 
         enableListening();
     }
-//**************************************
 
     public String getTracingFilePath() {
         return tracingFilePath;
     }
 
-
-    //**************************************
     public Document getDocument() {
         return tracingDocument;
     }
-    //**************************************
 
     public  void getOldfileContentFirst(String filePath){
         System.out.println("Find last version.");
+
         // 找到最后一个包含当前追踪文件变动且不是DELETE的版本
         for (int i = 0; i < VersionStorage.getProjectVersions().size(); i++) {
             Map<String, FileChange> version = VersionStorage.getProjectVersions().get(i);
@@ -80,20 +70,22 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
 
         Map<String, FileChange> versionContents = VersionStorage.getVersion(versionIndex);
         System.out.println("versionContents: " + versionContents);
+
         // 打印当前版本的所有文件路径
         for (String key : versionContents.keySet()) {
             System.out.println("Version file paths: " + key);
         }
         FileChange filechange = versionContents.get(filePath);
+
         // 打印当前版本的文件内容
         System.out.println("filechange: " + filechange);
         String filecontent = filechange.getFileContent(versionIndex);
+
         // 打印当前版本的文件内容
         System.out.println("oldfilecontent: " + filecontent);
+
         // 写入oldFilecontent
         oldFilecontent = filecontent;
-
-
     }
 
     @Override
@@ -102,11 +94,11 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
             return;
         }
 
-//*****************************************************************************************************************************************************************************************************************************
         FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
         if (!fileEditorManager.hasOpenFiles()) {
             return;
         }
+
         // 排除 autoversion.record.bin 文件和 autoversion.map.bin 文件，以及gitignore、gitattributes和.git文件夹下的文件
         VirtualFile file = FileDocumentManager.getInstance().getFile(event.getDocument());
         if (file == null) {
@@ -117,9 +109,8 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
                 testfilePath.contains(".gitignore") || testfilePath.contains(".gitattributes") || testfilePath.contains(".git/")) {
             return;
         }
-//***************************************************************************************************************************************************************************************************************************
+
         VirtualFile currentFile = getCurrentFile();
-        //null是否要返回
         String filePath = getCurrentFilePath(currentFile);
         if (first) {
             getOldfileContentFirst(filePath);
@@ -133,8 +124,6 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         try {
             System.out.println("hasSignificantChanges");
             if (hasChanges(oldFilecontent, currentFilecontent)) {
-
-
                 timer = new Timer();  // 必须重新创建 Timer 实例
                 Timerstatus=true;
             }
@@ -142,29 +131,23 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
             throw new RuntimeException(e);
         }
 
-
         // 创建新的任务
         TimerTask task = new TimerTask() {
             @Override
             public void run() {
                 ApplicationManager.getApplication().invokeLater(() -> {
-
-
                     List<String>OldFilecontent = convertStringToList(oldFilecontent);
                     List<String>CurrentFilecontent = convertStringToList(currentFilecontent);
                     System.out.println("OldFilecontent11111111:\n " + OldFilecontent);
                     System.out.println("CurrentFilecontent: \n" + CurrentFilecontent);
+
                     // 比较两个文本文件
                     Patch<String> patch = DiffUtils.diff(OldFilecontent, CurrentFilecontent);
                     saveProjectVersion(patch);
                     refreshToolWindow();
                     System.out.println("patch:\n " + patch);
-
                     oldFilecontent = getCurrentFileContent(currentFile);
                     System.out.println("OldFilecontent22222222:\n " + oldFilecontent);
-
-
-
                 });
             }
         };
@@ -178,7 +161,6 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
         var currentEditor = fileEditorManager.getSelectedEditor();
         VirtualFile currentFile = currentEditor.getFile();
-        //String currentFilecontent = FileDocumentManager.getInstance().getDocument(currentFile).getText();
         return currentFile;
     }
 
@@ -203,12 +185,12 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         if (newClasses.size() > oldClasses.size()) {
             return true;  // 新增类，记录变更
         }
-        //-----------------纯新增---------------------------------------------------------------------------！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+
         // 检查是否有类的删除
         if (newClasses.size() < oldClasses.size()) {
             return true;  // 删除类，记录变更
         }
-        //-----------------纯新增---------------------------------------------------------------------------！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+
         for (ClassOrInterfaceDeclaration oldClass : oldClasses) {
 
             var NewClass = newClasses.stream()
@@ -227,7 +209,7 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
 
                 if (!newFields.equals(oldFields)) {
                     System.out.println("成员变量发生变化，记录变更");
-                    return true;  // 成员变量变化，记录变更
+                    return true;
                 }
 
                 // 获取旧类和新类的成员函数签名列表
@@ -256,7 +238,6 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
                     return true;  // 记录变更
                 }
 
-
                 if (!newMethods.equals(oldMethods)) {
                     System.out.println("成员函数发生变化，记录变更");
                     return true;
@@ -282,11 +263,8 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
                         }
                     }
                 }
-
             }
-
         }
-
         return false;  // 如果没有重要变更
     }
 
@@ -302,7 +280,6 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
 
         String filePath = file.getPath();
         System.out.println("filePath: " + filePath);
-        //String currentContent = document.getText();
 
         // 处理文件的新增、删除或修改
         FileChange.ChangeType changeType = FileChange.ChangeType.MODIFY;
@@ -311,10 +288,6 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         FileChange fileChange = new FileChange(filePath, patch, changeType);
         System.out.println("fileChangegetEachFilePatch: " + fileChange.getEachFilePatch());
         fileChanges.put(filePath, fileChange);
-
-        // 更新最后一次文件内容的记录
-        //lastFileContentMap.put(filePath, currentContent);
-
 
         // 保存项目的文件变化到版本存储中
         VersionStorage.saveVersion(fileChanges);

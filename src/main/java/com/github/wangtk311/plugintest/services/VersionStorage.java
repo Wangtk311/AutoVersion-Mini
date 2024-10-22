@@ -1,9 +1,5 @@
 package com.github.wangtk311.plugintest.services;
 
-import com.github.weisj.jsvg.F;
-import com.intellij.openapi.project.Project;
-import org.jetbrains.annotations.NotNull;
-
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
