@@ -269,6 +269,6 @@ public class FileSystemListener extends VirtualFileAdapter {
 
     // 判断是否属于 .git 文件夹中的文件
     private boolean filePathContainsGitFolder(Path path) {
-        return path.toString().contains("/.git/");
+        return path.toString().contains("/.git/") || path.toString().contains("\\.git\\");
     }
 }
