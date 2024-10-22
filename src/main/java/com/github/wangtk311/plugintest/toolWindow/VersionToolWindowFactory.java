@@ -347,13 +347,13 @@ public class VersionToolWindowFactory implements ToolWindowFactory {
 
                 gitInit(project);
 
-                // 对每一个listener都应用getOldfileContentFirst(filePath);
-                for (DocumentListener listener : MyProjectComponent.getInstance(project).documentListeners){
-                    listener.getOldfileContentFirst(listener.getTracingFilePath());
-                }
-
                 // 重新启用文件系统监听器和文档监听器
                 enableAllListeners(project);
+
+                // 对每一个listener都应用getOldfileContent(filePath);
+                for (DocumentListener listener : MyProjectComponent.getInstance(project).documentListeners){
+                    listener.getOldfileContent(listener.getTracingFilePath());
+                }
 
                 // 显示成功信息
                 JOptionPane.showMessageDialog(panel, "已抹除所有历史版本!", "抹除成功", JOptionPane.CLOSED_OPTION);

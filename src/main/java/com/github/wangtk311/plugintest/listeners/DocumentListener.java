@@ -19,6 +19,7 @@ import com.github.javaparser.ast.body.*;
 import com.github.difflib.*;
 import org.jetbrains.annotations.NotNull;
 import java.util.*;
+import com.github.difflib.patch.AbstractDelta;
 
 public class DocumentListener implements com.intellij.openapi.editor.event.DocumentListener {
     private final Project project;
@@ -56,7 +57,7 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         return tracingDocument;
     }
 
-    public  void getOldfileContentFirst(String filePath){
+    public boolean getOldfileContent(String filePath){
         System.out.println("Find last version.");
         // 找到最后一个包含当前追踪文件变动且不是DELETE的版本
         for (int i = 0; i < VersionStorage.getProjectVersions().size(); i++) {
@@ -64,15 +65,25 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
             if (version.containsKey(filePath) && version.get(filePath).getChangeType() != FileChange.ChangeType.DELETE) {
                 versionIndex = i;
             }
+            if(i==0&&!version.containsKey(filePath)){
+                oldFilecontent="";
+                return false;
+            }
         }
+        System.out.println("versionIndex-----------------"+versionIndex);
         Map<String, FileChange> versionContents = VersionStorage.getVersion(versionIndex);
 
-        FileChange filechange = versionContents.get(filePath);
+        if(versionContents.get(filePath)==null) {
+            oldFilecontent="";
+            return false;
+        }
+        FileChange filechange =versionContents.get(filePath);
 
         String filecontent = filechange.getFileContent(versionIndex);
 
         // 写入oldFilecontent
         oldFilecontent = filecontent;
+        return true;
     }
 
     @Override
@@ -100,7 +111,20 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         //null是否要返回
         String filePath = getCurrentFilePath(currentFile);
         if (first) {
-            getOldfileContentFirst(filePath);
+            System.out.println("Find last version.");
+            // 找到最后一个包含当前追踪文件变动且不是DELETE的版本
+            for (int i = 0; i < VersionStorage.getProjectVersions().size(); i++) {
+                Map<String, FileChange> version = VersionStorage.getProjectVersions().get(i);
+                if (version.containsKey(filePath) && version.get(filePath).getChangeType() != FileChange.ChangeType.DELETE) {
+                    versionIndex = i;
+                }
+            }
+            System.out.println("versionIndex-----------------"+versionIndex);
+            Map<String, FileChange> versionContents = VersionStorage.getVersion(versionIndex);
+            FileChange filechange =versionContents.get(filePath);
+            String filecontent = filechange.getFileContent(versionIndex);
+            // 写入oldFilecontent
+            oldFilecontent = filecontent;
             first = false;
         }
 
@@ -110,7 +134,11 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         Timerstatus=false;
         try {
             System.out.println("hasSignificantChanges");
-            if (hasChanges(oldFilecontent, currentFilecontent)) {
+            if (hasChangesJava(oldFilecontent, currentFilecontent)) {
+                timer = new Timer();  // 必须重新创建 Timer 实例
+                Timerstatus=true;
+            }
+            else if (hasChangesOthers(oldFilecontent, currentFilecontent)){
                 timer = new Timer();  // 必须重新创建 Timer 实例
                 Timerstatus=true;
             }
@@ -160,7 +188,31 @@ public class DocumentListener implements com.intellij.openapi.editor.event.Docum
         return filePath;
     }
 
-    private boolean hasChanges(String oldFile, String newFile) throws Exception {
+    private  boolean hasChangesOthers(String oldFile, String newFile) throws Exception {
+        List<String>OldFilecontent = convertStringToList(oldFile);
+        List<String>CurrentFilecontent = convertStringToList(newFile);
+
+        // 比较两个文本文件
+        Patch<String> patch = DiffUtils.diff(OldFilecontent, CurrentFilecontent);
+        int changedelta = 0;
+        for (AbstractDelta<String> delta : patch.getDeltas()) {
+            changedelta ++;
+
+        }
+        System.out.println("开始--------------------------");
+        for (AbstractDelta<String> delta : patch.getDeltas()) {
+            System.out.println("Delta Type: " + delta.getType());
+            System.out.println("Source Position: " + delta.getSource().getPosition());
+            System.out.println("Source Lines: " + delta.getSource().getLines());
+            System.out.println("Target Position: " + delta.getTarget().getPosition());
+            System.out.println("Target Lines: " + delta.getTarget().getLines());
+            System.out.println("changedelta: " + changedelta);
+            System.out.println("=================================");
+        }
+        return changedelta >= 2;
+    }
+
+    private boolean hasChangesJava(String oldFile, String newFile) throws Exception {
         CompilationUnit oldCU = new JavaParser().parse(oldFile).getResult().orElse(null);
         CompilationUnit newCU = new JavaParser().parse(newFile).getResult().orElse(null);
 

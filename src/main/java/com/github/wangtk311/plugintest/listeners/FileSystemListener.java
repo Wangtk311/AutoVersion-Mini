@@ -230,9 +230,8 @@ public class FileSystemListener extends VirtualFileAdapter {
 
         // 处理文件重命名，视为删除旧文件并创建新文件，但是文件内容不变
         String oldFilePath = file.getParent().getPath() + "/" + oldName;
-        handleFileDelete(oldFilePath, oldName); // 删除旧文件
-
         handleFileCreate(file);
+        handleFileDelete(oldFilePath, oldName); // 删除旧文件
     }
 
     private void handleFileMove(String oldParentPath, VirtualFile file) {
@@ -241,8 +240,8 @@ public class FileSystemListener extends VirtualFileAdapter {
         }
         // 处理文件移动，视为删除旧文件并创建新文件
         String oldFilePath = oldParentPath + "/" + file.getName();
-        handleFileDelete(oldFilePath, file.getName()); // 删除旧文件
         handleFileCreate(file); // 创建新文件
+        handleFileDelete(oldFilePath, file.getName()); // 删除旧文件
     }
 
     public void pauseListening() {
